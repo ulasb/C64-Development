@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 // Screen position constants for better readability
-#define CENTER_COL      10
+#define CENTER_COL      11
 #define CENTER_ROW      5
 #define BOTTOM_COL      0
 #define BOTTOM_ROW      24
