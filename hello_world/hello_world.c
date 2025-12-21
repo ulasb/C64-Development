@@ -11,24 +11,37 @@
 #define BOTTOM_COL      0
 #define BOTTOM_ROW      24
 
-// C64 color codes (0-15):
-// 0=BLACK, 1=WHITE, 2=RED, 3=CYAN, 4=PURPLE, 5=GREEN, 6=BLUE, 7=YELLOW,
-// 8=ORANGE, 9=BROWN, 10=LIGHTRED, 11=DARKGRAY, 12=GRAY, 13=LIGHTGREEN,
-// 14=LIGHTBLUE, 15=LIGHTGRAY
+// C64 color codes
+#define C64_COLOR_BLACK        0
+#define C64_COLOR_WHITE        1
+#define C64_COLOR_RED          2
+#define C64_COLOR_CYAN         3
+#define C64_COLOR_PURPLE       4
+#define C64_COLOR_GREEN        5
+#define C64_COLOR_BLUE         6
+#define C64_COLOR_YELLOW       7
+#define C64_COLOR_ORANGE       8
+#define C64_COLOR_BROWN        9
+#define C64_COLOR_LIGHTRED     10
+#define C64_COLOR_DARKGRAY     11
+#define C64_COLOR_GRAY         12
+#define C64_COLOR_LIGHTGREEN   13
+#define C64_COLOR_LIGHTBLUE    14
+#define C64_COLOR_LIGHTGRAY    15
 
 int main(void) {
     // Clear the screen and set up initial display
     clrscr();
 
-    // Set text color to cyan for the main message (color code 3)
-    textcolor(3);
+    // Set text color to cyan for the main message
+    textcolor(C64_COLOR_CYAN);
 
     // Display the main greeting message in the center of the screen
     gotoxy(CENTER_COL, CENTER_ROW);
     cprintf("Hello, C64 World!");
 
-    // Change color and display secondary message at bottom (color code 5)
-    textcolor(5);
+    // Change color and display secondary message at bottom
+    textcolor(C64_COLOR_GREEN);
     gotoxy(BOTTOM_COL, BOTTOM_ROW);
     cprintf("Press any key to exit...");
 
