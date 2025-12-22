@@ -127,7 +127,7 @@ void test_part1(void) {
     cprintf("Part 1 Tests:\r\n");
     cprintf("============\r\n");
 
-    for (i = 0; i < PART1_TEST_COUNT; i++) {
+    for (i = 0; i < sizeof(part1_tests) / sizeof(part1_tests[0]); i++) {
         result = track_santa_visits(part1_tests[i]);
         cprintf("Input: %s -> Houses: %d", part1_tests[i], result);
 
