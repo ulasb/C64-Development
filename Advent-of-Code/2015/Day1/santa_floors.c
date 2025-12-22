@@ -29,13 +29,14 @@ const int part2_expected[PART2_TEST_COUNT] = {1, 5};
 
 int calculate_floor(const char* input) {
     int floor = 0;
-    size_t i;
-    for (i = 0; i < strlen(input); i++) {
-        if (input[i] == '(') {
+    const char *p = input;
+    while (*p) {
+        if (*p == '(') {
             floor++;
-        } else if (input[i] == ')') {
+        } else if (*p == ')') {
             floor--;
         }
+        p++;
     }
     return floor;
 }
