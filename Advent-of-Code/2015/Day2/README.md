@@ -1,5 +1,7 @@
 # Advent of Code 2015 - Day 2 (C64 Edition)
 
+![Screenshot](https://github.com/ulasb/C64-Development/blob/main/Advent-of-Code/2015/Day2/present_wrapping.png)
+
 This is a Commodore 64 implementation of Advent of Code 2015 Day 2, written in C and compiled with cc65. You can get more information, a complete problem definition, and a larger input file on [Advent of Code](http://www.adventofcode.com).
 
 ## The Problem
