@@ -66,7 +66,7 @@ int calculate_ribbon(int l, int w, int h) {
 }
 
 void test_part1(void) {
-    int i;
+    size_t i;
     int result;
 
     cprintf("Part 1 Tests (Wrapping Paper):\r\n");
