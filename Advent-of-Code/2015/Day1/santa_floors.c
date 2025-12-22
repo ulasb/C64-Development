@@ -43,16 +43,16 @@ int calculate_floor(const char* input) {
 
 int find_basement_position(const char* input) {
     int floor = 0;
-    size_t i;
-    for (i = 0; i < strlen(input); i++) {
-        if (input[i] == '(') {
+    int pos = 1;
+    for (const char *p = input; *p; ++p, ++pos) {
+        if (*p == '(') {
             floor++;
-        } else if (input[i] == ')') {
+        } else if (*p == ')') {
             floor--;
         }
 
         if (floor == -1) {
-            return i + 1; // positions are 1-indexed
+            return pos;
         }
     }
     return -1; // shouldn't happen with valid inputs
