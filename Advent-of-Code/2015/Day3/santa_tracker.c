@@ -30,6 +30,17 @@ void clear_visited_grid(char visited[GRID_SIZE][GRID_SIZE]) {
     memset(visited, 0, sizeof(char) * GRID_SIZE * GRID_SIZE);
 }
 
+int visit_if_new(char visited[GRID_SIZE][GRID_SIZE], int x, int y) {
+    if (x + OFFSET >= 0 && x + OFFSET < GRID_SIZE &&
+        y + OFFSET >= 0 && y + OFFSET < GRID_SIZE) {
+        if (visited[y + OFFSET][x + OFFSET] == 0) {
+            visited[y + OFFSET][x + OFFSET] = 1;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int track_santa_visits(const char* directions) {
     char visited[GRID_SIZE][GRID_SIZE];
     int x, y;
@@ -56,12 +67,8 @@ int track_santa_visits(const char* directions) {
         }
 
         // Check bounds (shouldn't exceed grid in test cases)
-        if (x + OFFSET >= 0 && x + OFFSET < GRID_SIZE &&
-            y + OFFSET >= 0 && y + OFFSET < GRID_SIZE) {
-            if (visited[y + OFFSET][x + OFFSET] == 0) {
-                visited[y + OFFSET][x + OFFSET] = 1;
-                unique_houses++;
-            }
+        if (visit_if_new(visited, x, y)) {
+            unique_houses++;
         }
 
         p++;
@@ -105,12 +112,8 @@ int track_santa_and_robot_santa(const char* directions) {
         }
 
         // Check bounds and mark as visited if new
-        if (*curr_x + OFFSET >= 0 && *curr_x + OFFSET < GRID_SIZE &&
-            *curr_y + OFFSET >= 0 && *curr_y + OFFSET < GRID_SIZE) {
-            if (visited[*curr_y + OFFSET][*curr_x + OFFSET] == 0) {
-                visited[*curr_y + OFFSET][*curr_x + OFFSET] = 1;
-                unique_houses++;
-            }
+        if (visit_if_new(visited, *curr_x, *curr_y)) {
+            unique_houses++;
         }
 
         turn = 1 - turn;  // Switch turns
