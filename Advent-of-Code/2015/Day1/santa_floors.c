@@ -44,7 +44,8 @@ int calculate_floor(const char* input) {
 int find_basement_position(const char* input) {
     int floor = 0;
     int pos = 1;
-    for (const char *p = input; *p; ++p, ++pos) {
+    const char *p;
+    for (p = input; *p; ++p, ++pos) {
         if (*p == '(') {
             floor++;
         } else if (*p == ')') {
