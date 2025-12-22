@@ -91,7 +91,7 @@ void test_part1(void) {
 }
 
 void test_part2(void) {
-    int i;
+    size_t i;
     int result;
 
     cprintf("Part 2 Tests (Ribbon):\r\n");
