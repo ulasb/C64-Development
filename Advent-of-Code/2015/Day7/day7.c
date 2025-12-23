@@ -45,8 +45,8 @@ const unsigned int expected_values[8] = {
 };
 
 // Simple atoi for C64 (no stdlib dependency)
-int simple_atoi(const char* str) {
-    int result = 0;
+unsigned int simple_atoi(const char* str) {
+    unsigned int result = 0;
     int i = 0;
     while (str[i] >= '0' && str[i] <= '9') {
         result = result * 10 + (str[i] - '0');
