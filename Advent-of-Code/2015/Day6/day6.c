@@ -37,9 +37,16 @@ const unsigned long part2_expected[PART2_TEST_COUNT] = {
     5000    // All 50x50 lights toggle: 2,500 * 2 = 5,000
 };
 
+// Command types for efficient processing
+typedef enum {
+    CMD_TURN_ON,
+    CMD_TURN_OFF,
+    CMD_TOGGLE
+} CommandType;
+
 // Structure to represent a light command
 typedef struct {
-    char command[10];  // "turn on", "turn off", or "toggle"
+    CommandType cmd_type;  // Efficient enum instead of string
     int start_x, start_y;
     int end_x, end_y;
 } LightCommand;
@@ -57,25 +64,24 @@ int simple_atoi(const char* str) {
 
 // Parse a single instruction line (C64-compatible)
 void parse_instruction(const char* line, LightCommand* cmd) {
-    int i = 0;
     int pos = 0;
     char num_str[10];
     int num_pos;
 
-    // Parse command
+    // Parse command type
     if (line[0] == 't' && line[1] == 'u' && line[2] == 'r' && line[3] == 'n') {
         // "turn on/off"
         pos = 5; // skip "turn "
         if (line[pos] == 'o' && line[pos+1] == 'n') {
-            strcpy(cmd->command, "turn on");
+            cmd->cmd_type = CMD_TURN_ON;
             pos += 3; // skip "on "
         } else {
-            strcpy(cmd->command, "turn off");
+            cmd->cmd_type = CMD_TURN_OFF;
             pos += 4; // skip "off "
         }
     } else {
         // "toggle"
-        strcpy(cmd->command, "toggle");
+        cmd->cmd_type = CMD_TOGGLE;
         pos = 7; // skip "toggle "
     }
 
@@ -85,7 +91,7 @@ void parse_instruction(const char* line, LightCommand* cmd) {
         num_str[num_pos++] = line[pos++];
     }
     num_str[num_pos] = '\0';
-    cmd->start_x = atoi(num_str);
+    cmd->start_x = simple_atoi(num_str);
     pos++; // skip comma
 
     // Parse start_y
@@ -94,7 +100,7 @@ void parse_instruction(const char* line, LightCommand* cmd) {
         num_str[num_pos++] = line[pos++];
     }
     num_str[num_pos] = '\0';
-    cmd->start_y = atoi(num_str);
+    cmd->start_y = simple_atoi(num_str);
 
     // Skip " through "
     while (line[pos] != ' ' && pos < 50) pos++;
@@ -106,7 +112,7 @@ void parse_instruction(const char* line, LightCommand* cmd) {
         num_str[num_pos++] = line[pos++];
     }
     num_str[num_pos] = '\0';
-    cmd->end_x = atoi(num_str);
+    cmd->end_x = simple_atoi(num_str);
     pos++; // skip comma
 
     // Parse end_y
@@ -115,25 +121,11 @@ void parse_instruction(const char* line, LightCommand* cmd) {
         num_str[num_pos++] = line[pos++];
     }
     num_str[num_pos] = '\0';
-    cmd->end_y = atoi(num_str);
+    cmd->end_y = simple_atoi(num_str);
 }
 
-// Count lights on in a grid (general solution)
-unsigned long count_lights_on(const char grid[DEMO_ROWS][DEMO_COLS]) {
-    unsigned long count = 0;
-    int x, y;
-    for (x = 0; x < DEMO_ROWS; x++) {
-        for (y = 0; y < DEMO_COLS; y++) {
-            if (grid[x][y]) {
-                count++;
-            }
-        }
-    }
-    return count;
-}
-
-// Process a single command on a grid (general algorithm)
-void process_command_part1(char grid[DEMO_ROWS][DEMO_COLS], const LightCommand* cmd) {
+// Process a single command on a grid with incremental counting
+void process_command_part1(char grid[DEMO_ROWS][DEMO_COLS], const LightCommand* cmd, unsigned long* light_count) {
     int x, y;
     int start_x = cmd->start_x;
     int start_y = cmd->start_y;
@@ -148,12 +140,28 @@ void process_command_part1(char grid[DEMO_ROWS][DEMO_COLS], const LightCommand* 
 
     for (x = start_x; x <= end_x; x++) {
         for (y = start_y; y <= end_y; y++) {
-            if (strcmp(cmd->command, "turn on") == 0) {
-                grid[x][y] = 1;
-            } else if (strcmp(cmd->command, "turn off") == 0) {
-                grid[x][y] = 0;
-            } else if (strcmp(cmd->command, "toggle") == 0) {
-                grid[x][y] = !grid[x][y];
+            switch (cmd->cmd_type) {
+                case CMD_TURN_ON:
+                    if (grid[x][y] == 0) {
+                        grid[x][y] = 1;
+                        (*light_count)++;
+                    }
+                    break;
+                case CMD_TURN_OFF:
+                    if (grid[x][y] == 1) {
+                        grid[x][y] = 0;
+                        (*light_count)--;
+                    }
+                    break;
+                case CMD_TOGGLE:
+                    if (grid[x][y] == 1) {
+                        grid[x][y] = 0;
+                        (*light_count)--;
+                    } else {
+                        grid[x][y] = 1;
+                        (*light_count)++;
+                    }
+                    break;
             }
         }
     }
@@ -162,7 +170,7 @@ void process_command_part1(char grid[DEMO_ROWS][DEMO_COLS], const LightCommand* 
 // Simulate Part 1 with actual grid operations (scaled for C64)
 unsigned long simulate_part1_full(const LightCommand* commands, int num_commands) {
     int x, y, i;
-    unsigned long count;
+    unsigned long light_count = 0;
 
     // Initialize grid to off
     for (x = 0; x < DEMO_ROWS; x++) {
@@ -173,12 +181,11 @@ unsigned long simulate_part1_full(const LightCommand* commands, int num_commands
 
     // Process each command and show intermediate results
     for (i = 0; i < num_commands; i++) {
-        process_command_part1(part1_grid, &commands[i]);
-        count = count_lights_on(part1_grid);
-        cprintf("Step %d: %lu lights\r\n", i+1, count);
+        process_command_part1(part1_grid, &commands[i], &light_count);
+        cprintf("Step %d: %lu lights\r\n", i+1, light_count);
     }
 
-    return count;
+    return light_count;
 }
 
 // Calculate total brightness in a grid
@@ -209,14 +216,18 @@ void process_command_part2(unsigned char grid[DEMO_ROWS][DEMO_COLS], const Light
 
     for (x = start_x; x <= end_x; x++) {
         for (y = start_y; y <= end_y; y++) {
-            if (strcmp(cmd->command, "turn on") == 0) {
-                grid[x][y] += 1;
-            } else if (strcmp(cmd->command, "turn off") == 0) {
-                if (grid[x][y] > 0) {
-                    grid[x][y] -= 1;
-                }
-            } else if (strcmp(cmd->command, "toggle") == 0) {
-                grid[x][y] += 2;
+            switch (cmd->cmd_type) {
+                case CMD_TURN_ON:
+                    grid[x][y] += 1;
+                    break;
+                case CMD_TURN_OFF:
+                    if (grid[x][y] > 0) {
+                        grid[x][y] -= 1;
+                    }
+                    break;
+                case CMD_TOGGLE:
+                    grid[x][y] += 2;
+                    break;
             }
         }
     }

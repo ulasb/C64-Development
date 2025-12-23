@@ -70,6 +70,20 @@ While theoretically possible to store this on C64 floppy disks, it would be extr
 
 The program implements the proper grid manipulation algorithms that would work for any sequence of commands, not just the specific test cases. This ensures the solution is general and correct.
 
+### Performance Optimizations
+
+The program implements several optimizations for C64 performance:
+
+- **Enum-based commands**: Command strings are parsed once into efficient enum values (`CMD_TURN_ON`, `CMD_TURN_OFF`, `CMD_TOGGLE`) instead of storing strings. This avoids 2,500+ `strcmp()` calls per command in the grid processing loops, using fast `switch` statements instead.
+
+- **Incremental counting**: Light counts are maintained incrementally during grid processing instead of rescanning the entire 2,500-cell grid after each command. This eliminates expensive grid-wide counting operations.
+
+- **Custom parsing functions**: Manual character-by-character parsing instead of `strtok()` and `sscanf()` for C64 compatibility.
+
+- **Simple atoi**: Custom integer parsing instead of standard `atoi()` for reliability and minimal overhead.
+
+These optimizations ensure both correctness and good performance on the constrained C64 platform.
+
 ## Files
 - `day6.c` - Main C source code
 - `Makefile` - Build configuration
