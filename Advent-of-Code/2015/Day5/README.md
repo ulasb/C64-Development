@@ -47,7 +47,7 @@ All tests should pass with "(PASS)" indicators.
 - `dvszwmarrgswjxmb` is naughty because it contains only one vowel.
 
 ### Part 2 Tests
-- `qjhvhtzxzqqjkmpb` is nice because is has a pair that appears twice (qj) and a letter that repeats with exactly one letter between them (zxz).
+- `qjhvhtzxzqqjkmpb` is nice because it has a pair that appears twice (qj) and a letter that repeats with exactly one letter between them (zxz).
 - `xxyxx` is nice because it has a pair that appears twice and a letter that repeats with one between, even though the letters used by each rule overlap.
 - `uurcxstgmygtbstg` is naughty because it has a pair (tg) but no repeat with a single letter between them.
 - `ieodomkazucvgmuy` is naughty because it has a repeating letter with one between (odo), but no pair that appears twice.
