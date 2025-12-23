@@ -1,12 +1,14 @@
 #include <conio.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 // Constants
 #define UINT16_MASK 0xFFFF  // 16-bit unsigned integer mask
 #define MAX_WIRES 16        // Maximum number of wires for test circuit
 #define MAX_EXPR_LEN 32     // Maximum expression length
+
+// Temporary buffer for safe tokenization (avoids modifying original expressions)
+char temp_expr[MAX_EXPR_LEN];
 
 // Wire storage structure
 typedef struct {
@@ -92,12 +94,13 @@ unsigned int resolve_wire(int wire_index) {
         return wire->value;
     }
 
-    // Parse the expression (work on the original string to save memory)
+    // Parse the expression (copy to temp buffer to avoid modifying original)
+    strcpy(temp_expr, wire->expression);
     part_count = 0;
-    token = wire->expression;
+    token = temp_expr;
     next_token = NULL;
 
-    // Simple tokenization (space-separated) - modify in place
+    // Simple tokenization (space-separated) - safe on temp buffer
     while (*token != '\0' && part_count < 4) {
         // Skip leading spaces
         while (*token == ' ') token++;
@@ -119,12 +122,13 @@ unsigned int resolve_wire(int wire_index) {
     if (part_count == 1) {
         // Direct number or wire reference
         if (is_number(parts[0])) {
-            result = (unsigned int)simple_atoi(parts[0]);
+            result = simple_atoi(parts[0]);
         } else {
             // Wire reference - resolve recursively
             int ref_index = find_wire(parts[0]);
             if (ref_index == -1) {
-                // Error: wire not found
+                // Error: wire not found - report and return 0
+                cprintf("ERROR: Wire '%s' not found\r\n", parts[0]);
                 result = 0;
             } else {
                 result = resolve_wire(ref_index);
@@ -135,6 +139,7 @@ unsigned int resolve_wire(int wire_index) {
         if (strcmp(parts[0], "NOT") == 0) {
             int ref_index = find_wire(parts[1]);
             if (ref_index == -1) {
+                cprintf("ERROR: Wire '%s' not found\r\n", parts[1]);
                 result = 0;
             } else {
                 unsigned int operand = resolve_wire(ref_index);
@@ -152,7 +157,7 @@ unsigned int resolve_wire(int wire_index) {
 
         if (left_index == -1) {
             // Left operand is a number
-            left_val = (unsigned int)simple_atoi(parts[0]);
+            left_val = simple_atoi(parts[0]);
         } else {
             left_val = resolve_wire(left_index);
         }
@@ -160,10 +165,11 @@ unsigned int resolve_wire(int wire_index) {
         if (strcmp(parts[1], "AND") == 0 || strcmp(parts[1], "OR") == 0) {
             // Right operand could be wire or number
             if (is_number(parts[2])) {
-                right_val = (unsigned int)simple_atoi(parts[2]);
+                right_val = simple_atoi(parts[2]);
             } else {
                 right_index = find_wire(parts[2]);
                 if (right_index == -1) {
+                    cprintf("ERROR: Wire '%s' not found\r\n", parts[2]);
                     right_val = 0;
                 } else {
                     right_val = resolve_wire(right_index);
@@ -177,11 +183,11 @@ unsigned int resolve_wire(int wire_index) {
             }
         } else if (strcmp(parts[1], "LSHIFT") == 0) {
             // Shift amount is always a number
-            int shift_amount = simple_atoi(parts[2]);
+            unsigned int shift_amount = simple_atoi(parts[2]);
             result = (left_val << shift_amount) & UINT16_MASK;
         } else if (strcmp(parts[1], "RSHIFT") == 0) {
             // Shift amount is always a number
-            int shift_amount = simple_atoi(parts[2]);
+            unsigned int shift_amount = simple_atoi(parts[2]);
             result = (left_val >> shift_amount) & UINT16_MASK;
         } else {
             // Error: unknown operation

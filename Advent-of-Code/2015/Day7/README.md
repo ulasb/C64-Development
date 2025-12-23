@@ -86,11 +86,14 @@ While the algorithm can handle much larger circuits, the C64's memory constraint
 The program implements several C64-specific optimizations:
 
 - **Memoization**: Each wire value is computed only once and cached
+- **Safe tokenization**: Expression parsing uses a temporary buffer to avoid modifying original strings
 - **Simple parsing**: Custom string tokenization instead of `strtok()` for C64 compatibility
 - **Direct operations**: Bitwise operations use efficient C operators
 - **Fixed-size arrays**: Avoids dynamic memory allocation for C64 reliability
 
-These optimizations ensure both correctness and reasonable performance on the constrained C64 platform.
+### Safe Tokenization Design
+
+The `resolve_wire()` function initially used in-place string modification for tokenization to save memory. However, this created a destructive side effect where original expression strings were corrupted with null terminators after resolution. This fix uses a temporary buffer (`temp_expr`) to safely tokenize expressions without modifying the original data, preventing potential bugs in debugging or display functions.
 
 ## Files
 - `day7.c` - Main C source code with circuit simulation
