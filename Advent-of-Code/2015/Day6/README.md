@@ -48,16 +48,20 @@ Expected final result: 2,446 lights on
 Expected final result: 5,001 total brightness
 
 ### Full 1000×1000 Scale
-The algorithms are identical to the full problem - the 10×10 tests validate the same logic that would work on a 1000×1000 grid. The C64 simply lacks the memory for the full-scale problem.
+The algorithms are identical to the full problem - the 50×50 tests validate the same logic that would work on a 1000×1000 grid. The C64 simply lacks the memory for the full-scale problem.
 
 ## Technical Notes
 
-Due to C64 memory constraints (approximately 64KB RAM), the program cannot store the full 1000x1000 grid in memory. Instead, it demonstrates the proper grid-based algorithms using a 100x100 grid that can run on actual C64 hardware.
+Due to C64 memory constraints (approximately 64KB RAM), the program cannot store the full 1000x1000 grid in memory. Instead, it demonstrates the proper grid-based algorithms using a 50x50 grid that can run on actual C64 hardware.
 
 ### Memory Usage
-- **50×50 grid for Part 1**: 2,500 bytes (~2.5KB) for on/off states
-- **50×50 grid for Part 2**: 2,500 bytes (~2.5KB) for brightness levels
-- **Total memory usage**: ~5KB for both grids, well within C64's ~40KB available program memory
+- **50×50 grid for Part 1**: 2,500 bytes (~2.5KB) for on/off states (`char`)
+- **50×50 grid for Part 2**: 10,000 bytes (~10KB) for brightness levels (`unsigned int`)
+- **Total memory usage**: ~12.5KB for both grids, well within C64's ~40KB available program memory
+
+### Data Type Choices
+- **Part 1**: `char` (1 byte) sufficient for binary on/off states
+- **Part 2**: `unsigned int` (2 bytes) prevents overflow from repeated toggle operations. The Advent of Code problem doesn't specify brightness limits, so larger types ensure correctness.
 
 ### Why Not 1000×1000?
 A full 1000×1000 grid would require:
@@ -76,7 +80,9 @@ The program implements several optimizations for C64 performance:
 
 - **Enum-based commands**: Command strings are parsed once into efficient enum values (`CMD_TURN_ON`, `CMD_TURN_OFF`, `CMD_TOGGLE`) instead of storing strings. This avoids 2,500+ `strcmp()` calls per command in the grid processing loops, using fast `switch` statements instead.
 
-- **Incremental counting**: Light counts are maintained incrementally during grid processing instead of rescanning the entire 2,500-cell grid after each command. This eliminates expensive grid-wide counting operations.
+- **Incremental counting**: Both light counts (Part 1) and brightness totals (Part 2) are maintained incrementally during grid processing instead of rescanning the entire 2,500-cell grid after each command. This eliminates expensive grid-wide counting operations.
+
+- **Proper data types**: Uses `unsigned int` for brightness values to prevent overflow from repeated operations, ensuring correctness even with unlimited toggle commands.
 
 - **Custom parsing functions**: Manual character-by-character parsing instead of `strtok()` and `sscanf()` for C64 compatibility.
 

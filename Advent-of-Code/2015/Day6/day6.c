@@ -9,7 +9,7 @@
 
 // Global grids to avoid cc65 local variable limits
 char part1_grid[DEMO_ROWS][DEMO_COLS];
-unsigned char part2_grid[DEMO_ROWS][DEMO_COLS];
+unsigned int part2_grid[DEMO_ROWS][DEMO_COLS];
 
 // Test instructions for Part 1 (scaled for 50x50 demo grid)
 #define PART1_TEST_COUNT 3
@@ -103,7 +103,6 @@ void parse_instruction(const char* line, LightCommand* cmd) {
     cmd->start_y = simple_atoi(num_str);
 
     // Skip " through "
-    while (line[pos] != ' ' && pos < 50) pos++;
     pos += 9; // skip " through "
 
     // Parse end_x
@@ -188,20 +187,8 @@ unsigned long simulate_part1_full(const LightCommand* commands, int num_commands
     return light_count;
 }
 
-// Calculate total brightness in a grid
-unsigned long calculate_total_brightness(const unsigned char grid[DEMO_ROWS][DEMO_COLS]) {
-    unsigned long total = 0;
-    int x, y;
-    for (x = 0; x < DEMO_ROWS; x++) {
-        for (y = 0; y < DEMO_COLS; y++) {
-            total += grid[x][y];
-        }
-    }
-    return total;
-}
-
-// Process a single command on brightness grid (Part 2)
-void process_command_part2(unsigned char grid[DEMO_ROWS][DEMO_COLS], const LightCommand* cmd) {
+// Process a single command on brightness grid with incremental counting (Part 2)
+void process_command_part2(unsigned int grid[DEMO_ROWS][DEMO_COLS], const LightCommand* cmd, unsigned long* brightness_total) {
     int x, y;
     int start_x = cmd->start_x;
     int start_y = cmd->start_y;
@@ -219,14 +206,17 @@ void process_command_part2(unsigned char grid[DEMO_ROWS][DEMO_COLS], const Light
             switch (cmd->cmd_type) {
                 case CMD_TURN_ON:
                     grid[x][y] += 1;
+                    (*brightness_total) += 1;
                     break;
                 case CMD_TURN_OFF:
                     if (grid[x][y] > 0) {
                         grid[x][y] -= 1;
+                        (*brightness_total) -= 1;
                     }
                     break;
                 case CMD_TOGGLE:
                     grid[x][y] += 2;
+                    (*brightness_total) += 2;
                     break;
             }
         }
@@ -236,7 +226,7 @@ void process_command_part2(unsigned char grid[DEMO_ROWS][DEMO_COLS], const Light
 // Simulate Part 2 with actual grid operations (scaled for C64)
 unsigned long simulate_part2_full(const LightCommand* commands, int num_commands) {
     int x, y, i;
-    unsigned long brightness;
+    unsigned long brightness_total = 0;
 
     // Initialize brightness grid to 0
     for (x = 0; x < DEMO_ROWS; x++) {
@@ -247,12 +237,11 @@ unsigned long simulate_part2_full(const LightCommand* commands, int num_commands
 
     // Process each command and show intermediate results
     for (i = 0; i < num_commands; i++) {
-        process_command_part2(part2_grid, &commands[i]);
-        brightness = calculate_total_brightness(part2_grid);
-        cprintf("Step %d: %lu brightness\r\n", i+1, brightness);
+        process_command_part2(part2_grid, &commands[i], &brightness_total);
+        cprintf("Step %d: %lu brightness\r\n", i+1, brightness_total);
     }
 
-    return brightness;
+    return brightness_total;
 }
 
 // Demonstration with small grid (works on real C64)
@@ -277,10 +266,10 @@ void test_part1(void) {
     // Simulate on actual 50x50 grid
     result = simulate_part1_full(commands, PART1_TEST_COUNT);
 
-    if (result == 2446) {
+    if (result == part1_expected[PART1_TEST_COUNT - 1]) {
         cprintf("FINAL: PASS\r\n");
     } else {
-        cprintf("FINAL: FAIL (got %lu)\r\n", result);
+        cprintf("FINAL: FAIL (got %lu, expected %lu)\r\n", result, part1_expected[PART1_TEST_COUNT - 1]);
     }
 }
 
@@ -299,10 +288,10 @@ void test_part2(void) {
     // Simulate on actual 50x50 brightness grid
     result = simulate_part2_full(commands, PART2_TEST_COUNT);
 
-    if (result == 5001) {
+    if (result == part2_expected[PART2_TEST_COUNT - 1]) {
         cprintf("FINAL: PASS\r\n");
     } else {
-        cprintf("FINAL: FAIL (got %lu)\r\n", result);
+        cprintf("FINAL: FAIL (got %lu, expected %lu)\r\n", result, part2_expected[PART2_TEST_COUNT - 1]);
     }
 }
 
