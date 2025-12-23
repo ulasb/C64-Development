@@ -33,14 +33,11 @@ int contains_forbidden_pair(const char* str) {
     size_t len = strlen(str);
     size_t i;
 
-    for (i = 0; i < len - 1; i++) {
-        char pair[3];
-        pair[0] = str[i];
-        pair[1] = str[i+1];
-        pair[2] = '\0';
-
-        if (strcmp(pair, "ab") == 0 || strcmp(pair, "cd") == 0 ||
-            strcmp(pair, "pq") == 0 || strcmp(pair, "xy") == 0) {
+    for (i = 0; i < len - 1; ++i) {
+        if ((str[i] == 'a' && str[i+1] == 'b') ||
+            (str[i] == 'c' && str[i+1] == 'd') ||
+            (str[i] == 'p' && str[i+1] == 'q') ||
+            (str[i] == 'x' && str[i+1] == 'y')) {
             return 1;
         }
     }
@@ -52,6 +49,11 @@ int string_is_nice_part1(const char* str) {
     size_t i;
     int vowel_count = 0;
     int has_double = 0;
+
+    // Check for forbidden pairs
+    if (contains_forbidden_pair(str)) {
+        return 0;
+    }
 
     if (len == 0) return 0;
 
@@ -65,11 +67,6 @@ int string_is_nice_part1(const char* str) {
         if (i > 0 && str[i] == str[i-1]) {
             has_double = 1;
         }
-    }
-
-    // Check for forbidden pairs
-    if (contains_forbidden_pair(str)) {
-        return 0;
     }
 
     return (vowel_count >= 3) && has_double;
@@ -86,13 +83,8 @@ int has_repeated_pair(const char* str) {
         pair[2] = '\0';
 
         // Look for this pair appearing again later (without overlapping)
-        for (j = i + 2; j < len - 1; j++) {
-            char check_pair[3];
-            check_pair[0] = str[j];
-            check_pair[1] = str[j+1];
-            check_pair[2] = '\0';
-
-            if (strcmp(pair, check_pair) == 0) {
+        for (j = i + 2; j < len - 1; ++j) {
+            if (str[i] == str[j] && str[i+1] == str[j+1]) {
                 return 1;
             }
         }
