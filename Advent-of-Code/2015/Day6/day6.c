@@ -34,7 +34,7 @@ const char* part2_instructions[PART2_TEST_COUNT] = {
 
 const unsigned long part2_expected[PART2_TEST_COUNT] = {
     1,      // Single light brightness +1
-    5000    // All 50x50 lights toggle: 2,500 * 2 = 5,000
+    5001    // Total after toggle: 1 + (2,500 * 2) = 5,001
 };
 
 // Command types for efficient processing
