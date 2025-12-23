@@ -45,7 +45,7 @@ typedef struct {
 } LightCommand;
 
 // Simple atoi for C64 (no stdlib dependency)
-int atoi(const char* str) {
+int simple_atoi(const char* str) {
     int result = 0;
     int i = 0;
     while (str[i] >= '0' && str[i] <= '9') {
