@@ -10,6 +10,12 @@ Calculate the difference between the number of characters in the code representa
 ### Part 2: Encoded Strings
 Calculate the difference between the number of characters in a newly encoded version of the string literal and the original code representation.
 
+## Optimization Notes
+
+The C code has been optimized for the Commodore 64 (6502 CPU):
+- **Pointer Arithmetic**: Replaced array indexing (`s[i]`) with pointer arithmetic (`*p++`) for faster access.
+- **Single Pass**: Removed `strlen` calls to avoid double iteration over strings.
+
 ## Running the Program
 
 ### Requirements
