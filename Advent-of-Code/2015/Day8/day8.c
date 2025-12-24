@@ -27,19 +27,9 @@ unsigned int calculate_memory_length(const char *s) {
       }
 
       if (*(p + 1) == 'x') {
-        /* Hex escape \xHH - requires 3 more chars to be fully valid: x, H, H */
-        if (*(p + 2) && *(p + 3)) {
-          len++;
-          p += 4;
-        } else {
-          /* Malformed hex escape, just consume what we can safely or treat as
-           * generic escape? Problem spec implies valid input, but for safety,
-           * if we don't have 4 chars, we shouldn't read past end. If we see \x
-           * but not enough chars, treat as \x (2 chars) for safety
-           */
-          len++;
-          p += 2;
-        }
+        /* Assuming valid input, \x is always followed by two hex characters. */
+        len++;
+        p += 4;
       } else {
         /* Generic escape (\", \\, or others): consumes 2 chars */
         len++;
