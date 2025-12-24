@@ -14,7 +14,7 @@ Calculate the difference between the number of characters in a newly encoded ver
 
 The C code has been optimized for the Commodore 64 (6502 CPU):
 - **Pointer Arithmetic**: Replaced array indexing (`s[i]`) with pointer arithmetic (`*p++`) for faster access.
-- **Single Pass**: Removed `strlen` calls to avoid double iteration over strings.
+- **Single Pass**: Removed all `strlen` calls. Functions now calculate lengths or return them as side effects to avoid any double traversal of strings.
 
 ## Running the Program
 

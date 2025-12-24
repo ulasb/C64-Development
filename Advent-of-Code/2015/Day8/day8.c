@@ -17,17 +17,33 @@ unsigned int calculate_memory_length(const char *s) {
   /* Process characters until the closing quote */
   while (*p && *p != '\"') {
     if (*p == '\\') {
-      if (*(p + 1) == '\\' || *(p + 1) == '\"') {
-        len++;
-        p += 2;
-      } else if (*(p + 1) == 'x') {
-        /* Hex escape \xHH */
-        len++;
-        p += 4;
-      } else {
-        /* Fallback for unexpected sequences */
+      /* Check for incomplete escape at end of string */
+      if (!*(p + 1)) {
+        /* Trailing backslash, treat as literal backslash effectively, or stop
+         */
         len++;
         p++;
+        break;
+      }
+
+      if (*(p + 1) == 'x') {
+        /* Hex escape \xHH - requires 3 more chars to be fully valid: x, H, H */
+        if (*(p + 2) && *(p + 3)) {
+          len++;
+          p += 4;
+        } else {
+          /* Malformed hex escape, just consume what we can safely or treat as
+           * generic escape? Problem spec implies valid input, but for safety,
+           * if we don't have 4 chars, we shouldn't read past end. If we see \x
+           * but not enough chars, treat as \x (2 chars) for safety
+           */
+          len++;
+          p += 2;
+        }
+      } else {
+        /* Generic escape (\", \\, or others): consumes 2 chars */
+        len++;
+        p += 2;
       }
     } else {
       len++;
@@ -37,7 +53,8 @@ unsigned int calculate_memory_length(const char *s) {
   return len;
 }
 
-unsigned int calculate_encoded_length(const char *s) {
+unsigned int calculate_encoded_length(const char *s,
+                                      unsigned int *out_orig_len) {
   unsigned int len = 2; /* Starting quotes */
   const char *p = s;
 
@@ -49,13 +66,17 @@ unsigned int calculate_encoded_length(const char *s) {
     }
     p++;
   }
+
+  if (out_orig_len) {
+    *out_orig_len = (unsigned int)(p - s);
+  }
   return len;
 }
 
 void run_test(const char *test_str, int expected_mem, int expected_enc) {
-  unsigned int code_len = strlen(test_str);
+  unsigned int code_len = 0;
   unsigned int mem_len = calculate_memory_length(test_str);
-  unsigned int enc_len = calculate_encoded_length(test_str);
+  unsigned int enc_len = calculate_encoded_length(test_str, &code_len);
   int part1_diff = (int)code_len - (int)mem_len;
   int part2_diff = (int)enc_len - (int)code_len;
 
