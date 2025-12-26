@@ -87,9 +87,13 @@ int generate_next_sequence(const char *input, char *output, int max_len) {
       current++;
     }
 
-    // Check for buffer overflow risk
-    // Max 2 digits likely for count, 1 for char.
-    if ((dest - output) > (max_len - 10)) {
+    // Check for buffer overflow risk.
+    // For this problem, count is always a single digit. We need space for:
+    // - 1 byte for the count
+    // - 1 byte for the digit
+    // - 1 byte for the null terminator at the end.
+    // So we check if we have at least 3 bytes of space left in the buffer.
+    if ((dest - output) >= (max_len - 3)) {
       return -1; // Overflow
     }
 
