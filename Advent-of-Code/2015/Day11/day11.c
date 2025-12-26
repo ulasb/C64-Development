@@ -116,9 +116,11 @@ void solve(const char *label) {
     increment_pwd();
 
     // Optimization: Check forbidden chars causing big skips
-    if (fast_skip()) {
-      continue;
-    }
+    // We loop fast_skip in case multiple skips are needed (unlikely but safe),
+    // and crucially, we FALL THROUGH to validation. The result of a skip
+    // is a valid candidate that must be checked, not skipped.
+    while (fast_skip())
+      ;
 
     // Check remaining rules (Straight, Pairs)
     if (is_valid_pwd()) {

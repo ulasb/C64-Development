@@ -36,3 +36,5 @@ The program will output:
     - **8-bit Arithmetic**: converted loop counters and flags to `unsigned char` to match the 8-bit 6502 CPU native word size, significantly reducing cycle counts compared to 16-bit `int`.
     - **Static Locals**: used `static` local variables to avoid the overhead of cc65's software stack for automatic variables.
     - **Global State**: Functions operate directly on global buffers to avoid parameter passing overhead.
+
+> **Note**: Despite these optimizations, solving Part 2 involves checking a large number of potential passwords. On a real C64 (or accurate emulator) running at 1MHz, this process will take some time (potentially several minutes). The progress counter is updated periodically to show activity.
