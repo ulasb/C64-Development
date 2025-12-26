@@ -165,7 +165,7 @@ void demonstrate_growth(void) {
   cprintf("-------------------\r\n");
 
   // Start with puzzle input
-  strcpy(src, PUZZLE_INPUT);
+  snprintf(src, MAX_SEQUENCE_LEN, "%s", PUZZLE_INPUT);
   cprintf("Start: %s\r\n", src);
   cprintf("Length: %d\r\n\r\n", strlen(src));
 
