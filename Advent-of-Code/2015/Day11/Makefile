@@ -1,7 +1,14 @@
-all: day11.prg
+CC = cl65
+CFLAGS = -O -t c64
+TARGET = day11.prg
+SOURCES = day11.c
 
-day11.prg: day11.c
-	cl65 -O -t c64 -o day11.prg day11.c
+.PHONY: all clean
+
+all: $(TARGET)
+
+$(TARGET): $(SOURCES)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SOURCES)
 
 clean:
-	rm -f day11.prg day11.o
+	rm -f $(TARGET) day11.o

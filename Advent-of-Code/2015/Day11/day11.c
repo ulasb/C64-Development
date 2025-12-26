@@ -2,44 +2,43 @@
 #include <stdio.h>
 #include <string.h>
 
-// Global password buffer (8 chars + null terminator)
-char pwd[9];
+#define PWD_LEN 8
 
-// Forbidden characters
-const char forbidden[] = "iol";
+// Global password buffer
+char pwd[PWD_LEN + 1];
 
 // Function: increment_pwd
-// Increments the password string like a base-26 number (a-z).
-void increment_pwd(char *p) {
-  int i;
-  int len = 8;
+// Increments the global password buffer.
+void increment_pwd(void) {
+  // static locals for speed (avoid stack)
+  static unsigned char i;
 
   // Start from the rightmost character
-  for (i = len - 1; i >= 0; i--) {
-    if (p[i] < 'z') {
-      p[i]++;
-      // Increment found non-z char.
-      // Characters to the right (which were 'z') have already been reset to 'a'
-      // in previous iterations of this loop (in the else block).
+  for (i = PWD_LEN - 1; i < PWD_LEN;
+       i--) { // i is unsigned, so >= 0 check is tricky. i < PWD_LEN relies on
+              // underflow.
+    // Wait, unsigned char i. 7, 6... 0. 0-- becomes 255.
+    // 255 is >= PWD_LEN (8). Loop terminates.
+    if (pwd[i] < 'z') {
+      pwd[i]++;
       break;
     } else {
-      p[i] = 'a';
+      pwd[i] = 'a';
     }
   }
 }
 
 // Function: fast_skip
-// Checks if password contains i, o, l. If so, increments that char,
-// resets subsequent chars to 'a', and returns 1 (true) to indicate a skip
-// happened. Returns 0 if no forbidden chars found.
-int fast_skip(char *p) {
-  int i, j;
-  for (i = 0; i < 8; i++) {
-    if (p[i] == 'i' || p[i] == 'o' || p[i] == 'l') {
-      p[i]++; // Skip the forbidden char to the next one
+// Checks if password contains i, o, l. If so, increments and resets.
+// Returns 1 if skip happened, 0 otherwise.
+unsigned char fast_skip(void) {
+  static unsigned char i, j;
+  for (i = 0; i < PWD_LEN; i++) {
+    if (pwd[i] == 'i' || pwd[i] == 'o' || pwd[i] == 'l') {
+      pwd[i]++; // Skip the forbidden char to the next one
       // Reset all rest to 'a' to get the lowest possible valid suffix
-      for (j = i + 1; j < 8; j++) {
-        p[j] = 'a';
+      for (j = i + 1; j < PWD_LEN; j++) {
+        pwd[j] = 'a';
       }
       return 1;
     }
@@ -48,22 +47,24 @@ int fast_skip(char *p) {
 }
 
 // Function: is_valid_pwd
-// Checks the 3 rules.
-int is_valid_pwd(const char *p) {
-  int i;
-  int has_straight = 0;
-  int pair_count = 0;
-  char first_pair_char = 0;
+// Checks the 3 rules on global pwd.
+unsigned char is_valid_pwd(void) {
+  static unsigned char i;
+  static unsigned char has_straight;
+  static unsigned char pair_count;
+  static char first_pair_char;
+
+  has_straight = 0;
+  pair_count = 0;
+  first_pair_char = 0;
 
   // Rule 2: No i, o, l
-  // Handled by valid_skip optimization in main loop, so we skip this check here
-  // for speed. If you run this function on arbitrary input, ensure it has no
-  // i/o/l first.
+  // Handled by valid_skip optimization in main loop.
 
   // Rule 1: Increasing straight of 3 (abc)
-  for (i = 0; i < 6; i++) {
-    // Check p[i], p[i+1], p[i+2]
-    if (p[i + 1] == p[i] + 1 && p[i + 2] == p[i] + 2) {
+  for (i = 0; i < PWD_LEN - 2; i++) {
+    // Check pwd[i], pwd[i+1], pwd[i+2]
+    if (pwd[i + 1] == pwd[i] + 1 && pwd[i + 2] == pwd[i] + 2) {
       has_straight = 1;
       break;
     }
@@ -72,15 +73,15 @@ int is_valid_pwd(const char *p) {
     return 0;
 
   // Rule 3: Two different non-overlapping pairs
-  for (i = 0; i < 7; i++) {
-    if (p[i] == p[i + 1]) {
+  for (i = 0; i < PWD_LEN - 1; i++) {
+    if (pwd[i] == pwd[i + 1]) {
       if (pair_count == 0) {
         pair_count++;
-        first_pair_char = p[i];
+        first_pair_char = pwd[i];
         i++; // Skip next to ensure non-overlapping
       } else {
         // Check if it's a different pair (e.g. 'aa' then 'bb')
-        if (p[i] != first_pair_char) {
+        if (pwd[i] != first_pair_char) {
           pair_count++;
           break;
         }
@@ -95,11 +96,11 @@ int is_valid_pwd(const char *p) {
 }
 
 void solve(const char *label) {
-  unsigned long attempts = 0;
+  static unsigned long attempts;
+  attempts = 0;
 
-  // Ensure we start clean (though input strings usually safe or handled
-  // quickly)
-  fast_skip(pwd);
+  // Ensure we start clean
+  fast_skip();
 
   cprintf("%s: Searching...\r\n", label);
 
@@ -107,24 +108,20 @@ void solve(const char *label) {
   while (1) {
     attempts++;
 
-    // Progress display every 2048 iterations to minimize I/O overhead
+    // Progress display every 2048 iterations
     if ((attempts & 2047) == 0) {
       cprintf("\r%s (%lu)", pwd, attempts);
     }
 
-    increment_pwd(pwd);
+    increment_pwd();
 
     // Optimization: Check forbidden chars causing big skips
-    if (fast_skip(pwd)) {
-      // Skip happened. pwd is now clean of i/o/l (up to the skip point, and
-      // reset rest). The resulting string ends in 'aaaa...', which usually
-      // fails the "straight" rule (needs distinct chars). So we can skip the
-      // expensive is_valid_pwd check and continue immediately.
+    if (fast_skip()) {
       continue;
     }
 
     // Check remaining rules (Straight, Pairs)
-    if (is_valid_pwd(pwd)) {
+    if (is_valid_pwd()) {
       break;
     }
   }

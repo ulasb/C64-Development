@@ -32,3 +32,7 @@ The program will output:
 - **Fast Skip**: The solution implements a smart skipping algorithm. When an invalid character ('i', 'o', 'l') is encountered, the password is immediately incremented at that position and the suffix reset to 'a's, skipping thousands of invalid iterations.
 - **Direct Screen Access**: Uses `conio.h` for high-performance screen updates, providing real-time visual feedback without slowing down the calculation.
 - **Optimized Validation**: Validity checks are streamlined to avoid redundant checks when skipping invalid characters.
+- **C64 Specific Optimizations**:
+    - **8-bit Arithmetic**: converted loop counters and flags to `unsigned char` to match the 8-bit 6502 CPU native word size, significantly reducing cycle counts compared to 16-bit `int`.
+    - **Static Locals**: used `static` local variables to avoid the overhead of cc65's software stack for automatic variables.
+    - **Global State**: Functions operate directly on global buffers to avoid parameter passing overhead.
