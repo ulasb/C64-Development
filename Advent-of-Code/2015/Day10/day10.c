@@ -71,7 +71,6 @@ int generate_next_sequence(const char *input, char *output, int max_len) {
   char *dest = output;
   char current_char;
   int count;
-  int remaining_space = max_len - 1; // Reserve space for null terminator
 
   // We can't check remaining space precisely for every char efficiently,
   // but append_int and writes should be safe if we are conservative.
