@@ -28,7 +28,7 @@ void print_best_arrangement(void);
 void init_happiness(void) {
   int i, j;
   people_count = 0;
-  max_happiness = -32768L;
+  max_happiness = LONG_MIN;
 
   for (i = 0; i < MAX_PEOPLE; i++) {
     for (j = 0; j < MAX_PEOPLE; j++) {
