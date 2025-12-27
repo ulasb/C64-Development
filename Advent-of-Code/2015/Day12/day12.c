@@ -76,7 +76,7 @@ long solve_part2(const char *s) {
       }
       s++;
     } else if (*s == ']') {
-      if (stack_ptr > 0) {
+      if (stack_ptr > 0 && stack_type[stack_ptr - 1] == '[') {
         stack_ptr--;
         current_sum = stack_sum[stack_ptr];
         if (stack_ptr > 0) {
