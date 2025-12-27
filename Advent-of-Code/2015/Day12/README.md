@@ -16,15 +16,15 @@ The C64 implementation focuses on memory efficiency and speed, avoiding the over
 ### Core Logic:
 - **Part 1 Parser:** A simple linear scan of the input string, identifying and summing integers (including negatives).
 - **Part 2 Parser:** A stack-based state machine that tracks JSON nesting levels (Objects and Arrays).
-  - Uses a context stack (`Context` struct) to maintain local sums and flags for each level of nesting.
-  - Correctlly identifies property values in objects by tracking the `:` separator.
+  - Uses a context stack (implemented as parallel arrays for `cc65` compatibility) to maintain local sums and flags for each level of nesting.
+  - Correctly identifies property values in objects by tracking the `:` separator.
   - Handles nested structures by propagating sums from children to parents only if the "red" condition is not met.
-  - Supports basic string skipping (including escaped characters) to safely identify the `"red"` value.
+  - Features robust string skipping (handling escaped characters like `\"`) and number parsing using `strtol`.
 
 ### Optimizations for C64:
-- **Memory Management:** Uses a fixed-size stack for recursion levels, avoiding dynamic memory allocation (`malloc`/`free`).
+- **Memory Management:** Uses a fixed-size stack for recursion levels, avoiding dynamic memory allocation (`malloc`/`free`). Includes stack overflow protection for safety.
 - **Data Types:** Uses `long` (32-bit) for sums to prevent overflow, as AOC inputs can result in values exceeding 16-bit limits.
-- **Efficiency:** Single-pass parsing for Part 1 and stack-based single-pass for Part 2.
+- **Efficiency:** Single-pass parsing for Part 1 and stack-based single-pass for Part 2 using `strtol` for robust number conversion.
 
 ## Compiling and Running
 

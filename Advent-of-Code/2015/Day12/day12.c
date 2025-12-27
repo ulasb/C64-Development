@@ -19,26 +19,26 @@ char stack_expect[MAX_STACK];
 int stack_ptr = 0;
 
 void push_context(char type) {
-  if (stack_ptr < MAX_STACK) {
-    stack_type[stack_ptr] = type;
-    stack_sum[stack_ptr] = 0;
-    stack_red[stack_ptr] = 0;
-    /* In arrays, everything is a value. In objects, we wait for ':' */
-    stack_expect[stack_ptr] = (type == '[');
-    stack_ptr++;
+  if (stack_ptr >= MAX_STACK) {
+    fprintf(stderr, "Error: Stack overflow\n");
+    exit(1);
   }
+  stack_type[stack_ptr] = type;
+  stack_sum[stack_ptr] = 0;
+  stack_red[stack_ptr] = 0;
+  /* In arrays, everything is a value. In objects, we wait for ':' */
+  stack_expect[stack_ptr] = (type == '[');
+  stack_ptr++;
 }
 
 /* Part 1: Just sum all numbers in the string */
 long solve_part1(const char *s) {
   long total = 0;
+  char *endptr;
   while (*s) {
     if (isdigit(*s) || (*s == '-' && isdigit(*(s + 1)))) {
-      total += atol(s);
-      if (*s == '-')
-        s++;
-      while (isdigit(*s))
-        s++;
+      total += strtol(s, &endptr, 10);
+      s = endptr;
     } else {
       s++;
     }
@@ -50,6 +50,7 @@ long solve_part1(const char *s) {
 long solve_part2(const char *s) {
   const char *start;
   int len;
+  char *endptr;
   long val;
   long current_sum;
   char current_red;
@@ -98,10 +99,12 @@ long solve_part2(const char *s) {
       s++;
       start = s;
       while (*s && *s != '"') {
-        if (*s == '\\')
+        if (*s == '\\') {
           s++; /* Skip escaped char */
-        if (*s)
-          s++;
+          if (*s == '\0')
+            break;
+        }
+        s++;
       }
       len = (int)(s - start);
 
@@ -115,14 +118,11 @@ long solve_part2(const char *s) {
       if (*s == '"')
         s++;
     } else if (isdigit(*s) || (*s == '-' && isdigit(*(s + 1)))) {
-      val = atol(s);
+      val = strtol(s, &endptr, 10);
       if (stack_ptr > 0) {
         stack_sum[stack_ptr - 1] += val;
       }
-      if (*s == '-')
-        s++;
-      while (isdigit(*s))
-        s++;
+      s = endptr;
     } else {
       s++;
     }
