@@ -117,7 +117,7 @@ long solve_part2(const char *s) {
       }
       if (*s == '"')
         s++;
-    } else if (isdigit(*s) || (*s == '-' && isdigit(*(s + 1)))) {
+    } else if (isdigit((unsigned char)*s) || (*s == '-' && isdigit((unsigned char)*(s + 1)))) {
       val = strtol(s, &endptr, 10);
       if (stack_ptr > 0) {
         stack_sum[stack_ptr - 1] += val;
