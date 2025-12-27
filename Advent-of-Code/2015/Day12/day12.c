@@ -36,7 +36,7 @@ long solve_part1(const char *s) {
   long total = 0;
   char *endptr;
   while (*s) {
-    if (isdigit(*s) || (*s == '-' && isdigit(*(s + 1)))) {
+    if (isdigit((unsigned char)*s) || (*s == '-' && isdigit((unsigned char)*(s + 1)))) {
       total += strtol(s, &endptr, 10);
       s = endptr;
     } else {
