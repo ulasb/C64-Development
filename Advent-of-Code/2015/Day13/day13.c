@@ -27,15 +27,10 @@ long calculate_total_happiness(void);
 void print_best_arrangement(void);
 
 void init_happiness(void) {
-  int i, j;
   people_count = 0;
   max_happiness = LONG_MIN;
 
-  for (i = 0; i < MAX_PEOPLE; i++) {
-    for (j = 0; j < MAX_PEOPLE; j++) {
-      happiness[i][j] = 0;
-    }
-  }
+  memset(happiness, 0, sizeof(happiness));
 }
 
 int find_person(const char *name) {
@@ -52,7 +47,7 @@ int add_person(const char *name) {
   if (id == -1) {
     if (people_count >= MAX_PEOPLE)
       return -1;
-    strcpy(people_names[people_count], name);
+    snprintf(people_names[people_count], NAME_LEN, "%s", name);
     return people_count++;
   }
   return id;
@@ -97,9 +92,7 @@ void permute(int start, int end) {
     long current = calculate_total_happiness();
     if (current > max_happiness) {
       max_happiness = current;
-      for (i = 0; i < people_count; i++) {
-        best_order[i] = current_order[i];
-      }
+      memcpy(best_order, current_order, sizeof(int) * people_count);
     }
     return;
   }
@@ -174,7 +167,7 @@ void run_test_part2(void) {
   /* No need to add relations for "Me" as happiness is initialized to 0 */
 
   /* Reset max_happiness to find new optimum */
-  max_happiness = -32768L;
+  max_happiness = LONG_MIN;
   solve();
   print_best_arrangement();
 
