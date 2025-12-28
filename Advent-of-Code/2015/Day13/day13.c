@@ -1,4 +1,5 @@
 #include <conio.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,7 +14,7 @@ char people_names[MAX_PEOPLE][NAME_LEN];
 int people_count = 0;
 int current_order[MAX_PEOPLE];
 int best_order[MAX_PEOPLE];
-long max_happiness = -32768L;
+long max_happiness = LONG_MIN;
 
 /* Function Prototypes */
 void init_happiness(void);
