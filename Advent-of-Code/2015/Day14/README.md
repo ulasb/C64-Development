@@ -53,15 +53,17 @@ The program validates against the following test data:
 - **Distances and Points**: `int` (16-bit signed) - sufficient for 2503 seconds at reasonable speeds
 - **Names**: Fixed-size character arrays (16 bytes)
 - **Time counters**: `int` (16-bit signed)
+- **Reindeer State**: `ReindeerState` enum (maps to int) - REINDEER_FLYING or REINDEER_RESTING
 
 ### Algorithm Implementation
 
 The program implements a second-by-second reindeer race simulation:
 
-1. **State Tracking**: Each reindeer tracks its current distance, points, flying/resting state, and time in current state.
+1. **State Tracking**: Each reindeer tracks its current distance, points, flying/resting state (using ReindeerState enum), and time in current state.
 2. **Second-by-Second Updates**: For each second, update each reindeer's position and state based on their flight characteristics.
 3. **Point Awards**: In Part 2, find the current leader(s) each second and award points.
 4. **Race Simulation**: Run the full 2503-second simulation for both distance and points calculations.
+5. **Modular Design**: Functions accept reindeer arrays and counts as parameters, making them testable and reusable.
 
 ### Performance Optimizations
 
@@ -70,6 +72,7 @@ The program implements several C64-specific optimizations:
 - **Direct State Updates**: Simple integer arithmetic for position and state updates.
 - **Minimal Memory Footprint**: Fixed-size arrays with no dynamic allocation.
 - **Efficient Comparisons**: Single pass through reindeer array for leader detection each second.
+- **Type-Safe State Management**: ReindeerState enum provides clear, self-documenting state checks.
 
 ## Files
 - `day14.c` - Main C source code with reindeer race simulation

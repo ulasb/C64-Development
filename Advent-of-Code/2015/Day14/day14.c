@@ -8,6 +8,12 @@
 #define NAME_LEN 16
 #define RACE_DURATION 2503
 
+/* Enum for reindeer state */
+typedef enum {
+    REINDEER_RESTING,
+    REINDEER_FLYING
+} ReindeerState;
+
 /* Reindeer struct - similar to Python dataclass */
 typedef struct {
     char name[NAME_LEN];
@@ -16,65 +22,73 @@ typedef struct {
     int rest_time;
     int distance;
     int points;
-    int flying;  /* 1 for flying, 0 for resting */
+    ReindeerState state;
     int time_in_current_state;
 } Reindeer;
 
-/* Global Variables */
-Reindeer reindeer[MAX_REINDEER];
-int reindeer_count = 0;
+/* Global reindeer array to avoid stack overflow */
+Reindeer global_reindeer[MAX_REINDEER];
+
 
 /* Function Prototypes */
-void init_reindeer(void);
-void add_reindeer(const char *name, int speed, int fly_time, int rest_time);
+void init_reindeer(Reindeer reindeer_list[], int *reindeer_count);
+void add_reindeer(Reindeer reindeer_list[], int *reindeer_count, const char *name, int speed, int fly_time, int rest_time);
 void reset_reindeer(Reindeer *r);
 void update_reindeer_position(Reindeer *r);
 void simulate_second(Reindeer reindeer_list[], int count, int award_points);
 void run_race_simulation(Reindeer reindeer_list[], int count, int total_seconds, int award_points);
 int simulate_race(Reindeer reindeer_list[], int count, int total_seconds);
 int simulate_race_with_points(Reindeer reindeer_list[], int count, int total_seconds);
+void setup_test_reindeer(Reindeer reindeer_list[], int *reindeer_count);
 
 /* Initialize reindeer array */
-void init_reindeer(void) {
-    reindeer_count = 0;
-    memset(reindeer, 0, sizeof(reindeer));
+void init_reindeer(Reindeer reindeer_list[], int *reindeer_count) {
+    *reindeer_count = 0;
+    memset(reindeer_list, 0, sizeof(Reindeer) * MAX_REINDEER);
 }
 
 /* Add a reindeer to the array */
-void add_reindeer(const char *name, int speed, int fly_time, int rest_time) {
+void add_reindeer(Reindeer reindeer_list[], int *reindeer_count, const char *name, int speed, int fly_time, int rest_time) {
     int idx;
 
-    if (reindeer_count >= MAX_REINDEER) {
+    if (*reindeer_count >= MAX_REINDEER) {
         printf("ERROR: Maximum reindeer count exceeded\n");
         return;
     }
 
-    idx = reindeer_count++;
-    strncpy(reindeer[idx].name, name, NAME_LEN - 1);
-    reindeer[idx].name[NAME_LEN - 1] = '\0';  /* Ensure null termination */
-    reindeer[idx].speed = speed;
-    reindeer[idx].fly_time = fly_time;
-    reindeer[idx].rest_time = rest_time;
-    reset_reindeer(&reindeer[idx]);
+    idx = (*reindeer_count)++;
+    strncpy(reindeer_list[idx].name, name, NAME_LEN - 1);
+    reindeer_list[idx].name[NAME_LEN - 1] = '\0';  /* Ensure null termination */
+    reindeer_list[idx].speed = speed;
+    reindeer_list[idx].fly_time = fly_time;
+    reindeer_list[idx].rest_time = rest_time;
+    reset_reindeer(&reindeer_list[idx]);
+}
+
+/* Setup test reindeer for validation */
+void setup_test_reindeer(Reindeer reindeer_list[], int *reindeer_count) {
+    init_reindeer(reindeer_list, reindeer_count);
+    add_reindeer(reindeer_list, reindeer_count, "Comet", 14, 10, 127);
+    add_reindeer(reindeer_list, reindeer_count, "Dancer", 16, 11, 162);
 }
 
 /* Reset reindeer to initial state */
 void reset_reindeer(Reindeer *r) {
     r->distance = 0;
     r->points = 0;
-    r->flying = 1;  /* Start flying */
+    r->state = REINDEER_FLYING;  /* Start flying */
     r->time_in_current_state = 0;
 }
 
 /* Update a single reindeer's position and state for one second */
 void update_reindeer_position(Reindeer *r) {
-    if (r->flying) {
+    if (r->state == REINDEER_FLYING) {
         r->distance += r->speed;
         r->time_in_current_state++;
 
         /* Check if we need to switch to resting */
         if (r->time_in_current_state >= r->fly_time) {
-            r->flying = 0;
+            r->state = REINDEER_RESTING;
             r->time_in_current_state = 0;
         }
     } else {
@@ -82,7 +96,7 @@ void update_reindeer_position(Reindeer *r) {
 
         /* Check if we need to switch to flying */
         if (r->time_in_current_state >= r->rest_time) {
-            r->flying = 1;
+            r->state = REINDEER_FLYING;
             r->time_in_current_state = 0;
         }
     }
@@ -165,30 +179,27 @@ int simulate_race_with_points(Reindeer reindeer_list[], int count, int total_sec
 
 /* Test cases from the problem description */
 void run_test_part1(void) {
+    int test_count;
     int max_distance;
 
     printf("\n--- Part 1 Test ---\n");
-    init_reindeer();
-
-    /* Add test reindeer */
-    add_reindeer("Comet", 14, 10, 127);
-    add_reindeer("Dancer", 16, 11, 162);
+    setup_test_reindeer(global_reindeer, &test_count);
 
     printf("Testing reindeer:\n");
     printf("Comet: %d km/s for %d seconds, rest %d seconds\n",
-           reindeer[0].speed, reindeer[0].fly_time, reindeer[0].rest_time);
+           global_reindeer[0].speed, global_reindeer[0].fly_time, global_reindeer[0].rest_time);
     printf("Dancer: %d km/s for %d seconds, rest %d seconds\n",
-           reindeer[1].speed, reindeer[1].fly_time, reindeer[1].rest_time);
+           global_reindeer[1].speed, global_reindeer[1].fly_time, global_reindeer[1].rest_time);
 
     /* Test after 1000 seconds */
-    max_distance = simulate_race(reindeer, reindeer_count, 1000);
+    max_distance = simulate_race(global_reindeer, test_count, 1000);
 
     printf("\nAfter 1000 seconds:\n");
-    printf("Comet traveled: %d km\n", reindeer[0].distance);
-    printf("Dancer traveled: %d km\n", reindeer[1].distance);
+    printf("Comet traveled: %d km\n", global_reindeer[0].distance);
+    printf("Dancer traveled: %d km\n", global_reindeer[1].distance);
     printf("Winner traveled: %d km\n", max_distance);
 
-    if (max_distance == 1120 && reindeer[0].distance == 1120 && reindeer[1].distance == 1056) {
+    if (max_distance == 1120 && global_reindeer[0].distance == 1120 && global_reindeer[1].distance == 1056) {
         printf("PART 1: (PASS)\n");
     } else {
         printf("PART 1: (FAIL) Expected Comet: 1120 km, Dancer: 1056 km\n");
@@ -196,24 +207,21 @@ void run_test_part1(void) {
 }
 
 void run_test_part2(void) {
+    int test_count;
     int max_points;
 
     printf("\n--- Part 2 Test ---\n");
-    init_reindeer();
-
-    /* Add test reindeer */
-    add_reindeer("Comet", 14, 10, 127);
-    add_reindeer("Dancer", 16, 11, 162);
+    setup_test_reindeer(global_reindeer, &test_count);
 
     /* Test after 1000 seconds with points */
-    max_points = simulate_race_with_points(reindeer, reindeer_count, 1000);
+    max_points = simulate_race_with_points(global_reindeer, test_count, 1000);
 
     printf("After 1000 seconds:\n");
-    printf("Comet points: %d\n", reindeer[0].points);
-    printf("Dancer points: %d\n", reindeer[1].points);
+    printf("Comet points: %d\n", global_reindeer[0].points);
+    printf("Dancer points: %d\n", global_reindeer[1].points);
     printf("Winner points: %d\n", max_points);
 
-    if (max_points == 689 && reindeer[0].points == 312 && reindeer[1].points == 689) {
+    if (max_points == 689 && global_reindeer[0].points == 312 && global_reindeer[1].points == 689) {
         printf("PART 2: (PASS)\n");
     } else {
         printf("PART 2: (FAIL) Expected Dancer: 689 points, Comet: 312 points\n");
@@ -221,26 +229,22 @@ void run_test_part2(void) {
 }
 
 void run_final_race(void) {
+    int final_count;
     int max_distance;
     int max_points;
 
     printf("\n--- Final Race (2503 seconds) ---\n");
-    init_reindeer();
-
-    /* Add reindeer - these would normally come from input file */
-    /* For now, using test reindeer since no input file is provided */
-    add_reindeer("Comet", 14, 10, 127);
-    add_reindeer("Dancer", 16, 11, 162);
+    setup_test_reindeer(global_reindeer, &final_count);
 
     /* Part 1: Distance-based winner */
     printf("Running Part 1: Distance-based race...\n");
-    max_distance = simulate_race(reindeer, reindeer_count, RACE_DURATION);
+    max_distance = simulate_race(global_reindeer, final_count, RACE_DURATION);
     printf("Part 1 - After %d seconds, the winning reindeer traveled %d km!\n",
            RACE_DURATION, max_distance);
 
     /* Part 2: Points-based winner */
     printf("Running Part 2: Points-based race...\n");
-    max_points = simulate_race_with_points(reindeer, reindeer_count, RACE_DURATION);
+    max_points = simulate_race_with_points(global_reindeer, final_count, RACE_DURATION);
     printf("Part 2 - After %d seconds, the winning reindeer earned %d points!\n",
            RACE_DURATION, max_points);
 }
