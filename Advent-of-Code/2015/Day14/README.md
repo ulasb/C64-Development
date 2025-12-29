@@ -46,8 +46,8 @@ The program validates against the following test data:
 ## Technical Notes
 
 ### Memory Usage
-- **Reindeer Array**: 10 reindeer structures (~240 bytes total)
-- **Reindeer Structure**: Name (16 chars), speed, fly_time, rest_time, distance, points, flying state, time counter (~32 bytes each)
+- **Reindeer Array**: 10 reindeer structures (~300 bytes total)
+- **Reindeer Structure**: Name (16 chars), speed, fly_time, rest_time, distance, points, flying state, time counter (30 bytes each)
 
 ### Data Types
 - **Distances and Points**: `int` (16-bit signed) - sufficient for 2503 seconds at reasonable speeds
