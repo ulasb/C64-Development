@@ -1,13 +1,12 @@
 /*
- * Fireworks Simulation for Commodore 64 - Zero-Division Optimization
+ * Fireworks Simulation for Commodore 64 - Final Optimization
  *
  * Optimizations:
- * 1. 16-bit math with Scale 8 (1.0 = 256).
- *    - Allows ">> 8" (high byte) for coordinate mapping.
- *    - Eliminates ALL division and complex shifting in the inner loops.
- * 2. Structure of Arrays (SoA).
- * 3. Direct screen/SID access.
- * 4. Delta clearing.
+ * 1. Zero-division math (Scale 256).
+ * 2. Inlined plotting (No function calls in loop).
+ * 3. Delta-Drawing (Only erase if moved).
+ * 4. Reduced particle count for safety.
+ * 5. Sound Effects (SID).
  */
 
 #include <conio.h>
@@ -49,37 +48,20 @@ typedef struct {
 #define SCREEN_W 40
 #define SCREEN_H 25
 
-/*
- * CRITICAL OPTIMIZATION:
- * Coordinate System is now Chars * 256.
- * X: 0 .. 40*256 (10240)
- * Y: 0 .. 25*256 (6400)
- * Screen X = val >> 8
- * Screen Y = val >> 8
- */
+/* Scale 256 */
 #define SCALE 8
-/* Max screen height in scaled units */
 #define MAX_Y_SCALED (25 << 8)
 
-/* Physics Constants (Scaled by 256) */
-/* Gravity 0.15 * 256 = 38 */
+/* Physics Constants */
 #define GRAVITY 38
-
-/* Speed in chars/frame approx */
-/* Min speed 0.1 chars/frame -> 25 */
-/* Max speed 0.4 chars/frame -> 100 */
 #define P_SPEED_MIN 30
 #define P_SPEED_MAX 120
-
-/* Rocket VY: -0.6 chars/frame? */
-/* -12.0 python pixels. 24 pixels/char -> 0.5 chars/frame */
-/* 0.5 * 256 = 128 */
 #define ROCKET_VY -140
 
 #define LIFE_MAX 30
 #define MAX_FIREWORKS 3
-/* We can probably handle more particles now */
-#define MAX_PARTICLES 64
+/* Reduced to 48 to maintain framerate with multiple explosions */
+#define MAX_PARTICLES 48
 
 /* Colors */
 const unsigned char PALETTE[] = {2, 5, 6, 7, 4, 3, 8, 14};
@@ -118,7 +100,7 @@ void init_sound() {
 
 void sfx_launch() {
   SID_HW->ctrl1 = 0;
-  SID_HW->freq1 = 1000;
+  SID_HW->freq1 = 1000 + (rand() % 500); /* Varied pitch */
   SID_HW->ad1 = 0x59;
   SID_HW->sr1 = 0x00;
   SID_HW->ctrl1 = 17;
@@ -139,27 +121,10 @@ void init_tables() {
   }
 }
 
-/* Fast plot without boundary checks for speed in known ranges?
-   Better safe than sorry, but maybe we can optimize.
-   Since we use >> 8, values 0..10240 map to 0..40.
-   Negatives map to ... big unsigned.
-*/
-void fast_plot(unsigned char sx, unsigned char sy, unsigned char ch,
-               unsigned char color) {
-  /* Manual boundary check using unsigned char cast tricks (wraps negative to
-   * large positive). Limit Y to 24 to protect footer at row 24. */
-  if (sx < SCREEN_W && sy < 24) {
-    unsigned int off = row_offsets[sy] + sx;
-    VIDRAM[off] = ch;
-    COLRAM[off] = color;
-  }
-}
-
 void spawn_explosion(int x, int y, unsigned char color) {
   unsigned char i;
   unsigned char count = 0;
-  /* Increase particle count slightly */
-  unsigned char p_count = 15 + (rand() & 15);
+  unsigned char p_count = 10 + (rand() & 7); /* 10-17 particles (lighter) */
 
   sfx_explode();
 
@@ -181,64 +146,96 @@ void spawn_explosion(int x, int y, unsigned char color) {
 }
 
 void update_simulation() {
-  unsigned char i;
-  unsigned char sx, sy; /* Bytes are enough for screen coords 0..40 */
+  register unsigned char i;
+  register unsigned char sx, sy;
+  register unsigned char old_sx, old_sy;
+  unsigned int off;
+  unsigned char ch;
 
   /* FIREWORKS */
   for (i = 0; i < MAX_FIREWORKS; ++i) {
     if (fireworks[i].active && !fireworks[i].exploded) {
-      /* High byte is screen coordinate ( >> 8 ) */
-      sx = (unsigned char)(fireworks[i].x >> 8);
-      sy = (unsigned char)(fireworks[i].y >> 8);
-      fast_plot(sx, sy, ' ', 0);
+      old_sx = (unsigned char)(fireworks[i].x >> 8);
+      old_sy = (unsigned char)(fireworks[i].y >> 8);
 
       fireworks[i].y += fireworks[i].vy;
 
       if (fireworks[i].y <= fireworks[i].target_y) {
+        /* Erase old */
+        if (old_sy < 24) {
+          off = row_offsets[old_sy] + old_sx;
+          VIDRAM[off] = ' ';
+        }
         fireworks[i].exploded = 1;
         spawn_explosion(fireworks[i].x, fireworks[i].y, fireworks[i].color);
         fireworks[i].active = 0;
       } else {
         sx = (unsigned char)(fireworks[i].x >> 8);
         sy = (unsigned char)(fireworks[i].y >> 8);
-        fast_plot(sx, sy, '^', 1);
+
+        /* Delta Erase/Draw */
+        if (sx != old_sx || sy != old_sy) {
+          if (old_sy < 24)
+            VIDRAM[row_offsets[old_sy] + old_sx] = ' ';
+          if (sy < 24) {
+            off = row_offsets[sy] + sx;
+            VIDRAM[off] = '^';
+            COLRAM[off] = 1; /* White */
+          }
+        }
       }
     }
   }
 
   /* PARTICLES */
   for (i = 0; i < MAX_PARTICLES; ++i) {
-    /* Optimization: cache active check to avoid array lookup? No, byte lookup
-     * is fast */
     if (p_active[i]) {
-      sx = (unsigned char)(p_x[i] >> 8);
-      sy = (unsigned char)(p_y[i] >> 8);
-
-      fast_plot(sx, sy, ' ', 0);
+      old_sx = (unsigned char)(p_x[i] >> 8);
+      old_sy = (unsigned char)(p_y[i] >> 8);
 
       p_vy[i] += GRAVITY;
       p_x[i] += p_vx[i];
       p_y[i] += p_vy[i];
-
-      /* Drag: vx -= vx/16 */
       p_vx[i] -= (p_vx[i] >> 4);
-
       p_life[i]--;
 
-      /* Bounds check: > 6400 (visible height) */
-      if (p_y[i] > MAX_Y_SCALED) {
+      if (p_y[i] > MAX_Y_SCALED)
         p_life[i] = 0;
-      }
 
       if (p_life[i] <= 0) {
         p_active[i] = 0;
+        /* Erase last position */
+        if (old_sy < 24 && old_sx < 40) {
+          VIDRAM[row_offsets[old_sy] + old_sx] = ' ';
+        }
       } else {
-        unsigned char ch = (p_life[i] < 10) ? '.' : '*';
-        /* Recalculate screen coords */
         sx = (unsigned char)(p_x[i] >> 8);
         sy = (unsigned char)(p_y[i] >> 8);
+        ch = (p_life[i] < 10) ? '.' : '*';
 
-        fast_plot(sx, sy, ch, p_color[i]);
+        /* Delta Draw */
+        if (sy < 24 && sx < 40) {
+          off = row_offsets[sy]; /* Optimization: fetch row once? compiler might
+                                  */
+          off += sx;
+
+          if (sx != old_sx || sy != old_sy) {
+            /* Erase Old */
+            if (old_sy < 24 && old_sx < 40) {
+              VIDRAM[row_offsets[old_sy] + old_sx] = ' ';
+            }
+            /* Draw New */
+            VIDRAM[off] = ch;
+            COLRAM[off] = p_color[i];
+          } else {
+            /* Overwrite (refresh char) */
+            VIDRAM[off] = ch;
+            /* color is same, skip */
+          }
+        } else if (old_sy < 24 && old_sx < 40) {
+          /* Moved off screen, erase old */
+          VIDRAM[row_offsets[old_sy] + old_sx] = ' ';
+        }
       }
     }
   }
@@ -249,18 +246,13 @@ void launch_firework() {
   for (i = 0; i < MAX_FIREWORKS; ++i) {
     if (!fireworks[i].active) {
       fireworks[i].active = 1;
-      /* Random X: 5 to 35 chars -> 1280 to 8960 */
       fireworks[i].x = (1280 + rand() % 7680);
-      fireworks[i].y = MAX_Y_SCALED - 256; /* Bottom */
-
-      /* Target: 5 to 15 chars from top -> 1280 to 3840 */
+      fireworks[i].y = MAX_Y_SCALED - 256;
       fireworks[i].target_y = (1280 + rand() % 2560);
-
       fireworks[i].vx = 0;
       fireworks[i].vy = ROCKET_VY;
       fireworks[i].color = PALETTE[rand() & 7];
       fireworks[i].exploded = 0;
-
       sfx_launch();
       break;
     }
@@ -292,7 +284,6 @@ int main() {
     update_simulation();
   }
 
-  /* Silence SID_HW */
   SID_HW->volume = 0;
   SID_HW->ctrl1 = 0;
   SID_HW->ctrl3 = 0;

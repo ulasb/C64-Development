@@ -41,20 +41,23 @@ To achieve a smooth framerate on the 1MHz 6502 processor, several critical optim
     - This allows coordinate mapping (`screen_x = world_x >> 8`) to be compiled as a single "take high byte" instruction, completely eliminating 6502-expensive division/modulo operations from the inner loop.
     - This provided a 10x speedup in coordinate calculation, allowing for many more simultaneous particles.
 
-2.  **Structure of Arrays (SoA)**:
+2.  **Inlined Plotting**:
+    - The plotting logic was manually inlined into the main loop to avoid function call overhead (`JSR`/`RTS`).
+
+3.  **Delta Drawing**:
+    - The screen is never cleared completely. Instead, particles only "erase" their old position if they have moved to a new character cell. This reduces memory writes significantly.
+
+4.  **Structure of Arrays (SoA)**:
     - Converted the particle system from an "Array of Structures" to a "Structure of Arrays".
     - On the 6502, accessing `int x[i]` is significantly faster than `structs[i].x` because it avoids complex pointer arithmetic (6502 does not have a hardware multiplier). This speeds up particle loops by 2-3x.
 
-3.  **Fixed-Point Algebra (16-bit)**:
+5.  **Fixed-Point Algebra (16-bit)**:
     - Floating-point math is irrelevant. Using `int` (16-bit) handles the physics range of 0..10240 perfectly.
 
-4.  **Direct Video Memory Access**:
+6.  **Direct Video Memory Access**:
     - The standard `conio` library (`cputc`, `gotoxy`) carries significant overhead.
     - This implementation writes directly to the Video RAM at `0x0400` and Color RAM at `0xD800`.
     - A **pre-calculated row offset table** (`row_offsets`) allows for single-addition screen indexing.
-
-5.  **Delta Clearing / Object-Based Erasing**:
-    - The simulation now only "erases" (draws a space) at the previous position of each active object before moving it.
 
 ## Sound Implementation
 - The **SID (Sound Interface Device)** chip is accessed directly at `0xD400`.
