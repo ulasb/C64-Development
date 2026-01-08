@@ -1,11 +1,11 @@
 /*
- * Fireworks Simulation for Commodore 64 - Final Optimization
+ * Fireworks Simulation for Commodore 64 - SoA Everywhere
  *
  * Optimizations:
  * 1. Zero-division math (Scale 256).
- * 2. Inlined plotting (No function calls in loop).
- * 3. Delta-Drawing (Only erase if moved).
- * 4. Reduced particle count for safety.
+ * 2. SoA for BOTH Particles AND Rockets.
+ * 3. Fast PRNG replacing rand().
+ * 4. Inlined plotting & Delta Drawing.
  * 5. Sound Effects (SID).
  */
 
@@ -50,17 +50,26 @@ typedef struct {
 
 /* Scale 256 */
 #define SCALE 8
-#define MAX_Y_SCALED (25 << 8)
 
-/* Physics Constants */
+/* Max screen height in scaled units */
+/* (25 * 256 = 6400) */
+#define MAX_Y_SCALED (SCREEN_H << SCALE)
+
+/* Physics Constants (Scaled by 256) */
 #define GRAVITY 38
 #define P_SPEED_MIN 30
 #define P_SPEED_MAX 120
+/* -0.55 chars/frame */
 #define ROCKET_VY -140
+
+/* Launch configuration */
+#define LAUNCH_X_MIN (5 << SCALE)
+#define LAUNCH_X_RANGE (30 << SCALE)
+#define TARGET_Y_MIN (5 << SCALE)
+#define TARGET_Y_RANGE (10 << SCALE)
 
 #define LIFE_MAX 30
 #define MAX_FIREWORKS 3
-/* Reduced to 48 to maintain framerate with multiple explosions */
 #define MAX_PARTICLES 48
 
 /* Colors */
@@ -78,16 +87,20 @@ int p_vy[MAX_PARTICLES];
 unsigned char p_color[MAX_PARTICLES];
 signed char p_life[MAX_PARTICLES];
 
-typedef struct {
-  unsigned char active;
-  int x, y;
-  int vx, vy;
-  int target_y;
-  unsigned char color;
-  unsigned char exploded;
-} Firework;
+/* SoA for Fireworks (Rockets) */
+/* Breaking the struct to Arrays eliminates 13x multiplication overhead per
+ * access */
+unsigned char f_active[MAX_FIREWORKS];
+int f_x[MAX_FIREWORKS];
+int f_y[MAX_FIREWORKS];
+int f_vx[MAX_FIREWORKS];
+int f_vy[MAX_FIREWORKS];
+int f_target_y[MAX_FIREWORKS];
+unsigned char f_color[MAX_FIREWORKS];
+unsigned char f_exploded[MAX_FIREWORKS];
 
-Firework fireworks[MAX_FIREWORKS];
+/* Simple Fast PRNG State */
+unsigned char seed = 123;
 
 /* Sound System */
 void init_sound() {
@@ -98,9 +111,22 @@ void init_sound() {
   SID_HW->sr3 = 0x00;
 }
 
+/* Fast 8-bit PRNG */
+unsigned char fast_rand() {
+  seed ^= seed << 2;
+  seed ^= seed >> 5;
+  seed ^= seed << 3;
+  return seed;
+}
+
+/* Helper for 16-bit random using fast 8-bit parts */
+unsigned int fast_rand16() {
+  return (unsigned int)fast_rand() | ((unsigned int)fast_rand() << 8);
+}
+
 void sfx_launch() {
   SID_HW->ctrl1 = 0;
-  SID_HW->freq1 = 1000 + (rand() % 500); /* Varied pitch */
+  SID_HW->freq1 = 1000 + (fast_rand() << 2);
   SID_HW->ad1 = 0x59;
   SID_HW->sr1 = 0x00;
   SID_HW->ctrl1 = 17;
@@ -122,22 +148,23 @@ void init_tables() {
 }
 
 void spawn_explosion(int x, int y, unsigned char color) {
-  unsigned char i;
+  register unsigned char i;
   unsigned char count = 0;
-  unsigned char p_count = 10 + (rand() & 7); /* 10-17 particles (lighter) */
+  unsigned char p_count = 10 + (fast_rand() & 7);
 
   sfx_explode();
 
   for (i = 0; i < MAX_PARTICLES; ++i) {
     if (!p_active[i]) {
-      int speed = P_SPEED_MIN + (rand() % (P_SPEED_MAX - P_SPEED_MIN));
+      int speed = P_SPEED_MIN + (fast_rand() % (P_SPEED_MAX - P_SPEED_MIN));
       p_active[i] = 1;
       p_x[i] = x;
       p_y[i] = y;
       p_color[i] = color;
       p_life[i] = LIFE_MAX;
-      p_vx[i] = (rand() % (speed * 2)) - speed;
-      p_vy[i] = (rand() % (speed * 2)) - speed;
+
+      p_vx[i] = (fast_rand() % (speed * 2)) - speed;
+      p_vy[i] = (fast_rand() % (speed * 2)) - speed;
       count++;
       if (count >= p_count)
         break;
@@ -152,32 +179,35 @@ void update_simulation() {
   unsigned int off;
   unsigned char ch;
 
-  /* FIREWORKS */
+  /* FIREWORKS (SoA Optimized) */
   for (i = 0; i < MAX_FIREWORKS; ++i) {
-    if (fireworks[i].active && !fireworks[i].exploded) {
-      old_sx = (unsigned char)(fireworks[i].x >> 8);
-      old_sy = (unsigned char)(fireworks[i].y >> 8);
+    if (f_active[i] && !f_exploded[i]) {
+      old_sx = (unsigned char)(f_x[i] >> 8);
+      old_sy = (unsigned char)(f_y[i] >> 8);
 
-      fireworks[i].y += fireworks[i].vy;
+      f_y[i] += f_vy[i];
 
-      if (fireworks[i].y <= fireworks[i].target_y) {
+      if (f_y[i] <= f_target_y[i]) {
+        /* Explode */
         /* Erase old */
-        if (old_sy < 24) {
+        if (old_sy < 24 && old_sx < SCREEN_W) {
           off = row_offsets[old_sy] + old_sx;
           VIDRAM[off] = ' ';
         }
-        fireworks[i].exploded = 1;
-        spawn_explosion(fireworks[i].x, fireworks[i].y, fireworks[i].color);
-        fireworks[i].active = 0;
+        f_exploded[i] = 1;
+        spawn_explosion(f_x[i], f_y[i], f_color[i]);
+        f_active[i] = 0;
       } else {
-        sx = (unsigned char)(fireworks[i].x >> 8);
-        sy = (unsigned char)(fireworks[i].y >> 8);
+        /* Update */
+        sx = (unsigned char)(f_x[i] >> 8);
+        sy = (unsigned char)(f_y[i] >> 8);
 
         /* Delta Erase/Draw */
         if (sx != old_sx || sy != old_sy) {
-          if (old_sy < 24)
+          if (old_sy < 24 && old_sx < SCREEN_W) {
             VIDRAM[row_offsets[old_sy] + old_sx] = ' ';
-          if (sy < 24) {
+          }
+          if (sy < 24 && sx < SCREEN_W) {
             off = row_offsets[sy] + sx;
             VIDRAM[off] = '^';
             COLRAM[off] = 1; /* White */
@@ -187,7 +217,7 @@ void update_simulation() {
     }
   }
 
-  /* PARTICLES */
+  /* PARTICLES (SoA) */
   for (i = 0; i < MAX_PARTICLES; ++i) {
     if (p_active[i]) {
       old_sx = (unsigned char)(p_x[i] >> 8);
@@ -205,7 +235,7 @@ void update_simulation() {
       if (p_life[i] <= 0) {
         p_active[i] = 0;
         /* Erase last position */
-        if (old_sy < 24 && old_sx < 40) {
+        if (old_sy < 24 && old_sx < SCREEN_W) {
           VIDRAM[row_offsets[old_sy] + old_sx] = ' ';
         }
       } else {
@@ -214,26 +244,25 @@ void update_simulation() {
         ch = (p_life[i] < 10) ? '.' : '*';
 
         /* Delta Draw */
-        if (sy < 24 && sx < 40) {
-          off = row_offsets[sy]; /* Optimization: fetch row once? compiler might
-                                  */
-          off += sx;
+        if (sy < 24 && sx < SCREEN_W) {
+          off = row_offsets[sy] + sx;
 
           if (sx != old_sx || sy != old_sy) {
             /* Erase Old */
-            if (old_sy < 24 && old_sx < 40) {
+            if (old_sy < 24 && old_sx < SCREEN_W) {
               VIDRAM[row_offsets[old_sy] + old_sx] = ' ';
             }
             /* Draw New */
             VIDRAM[off] = ch;
             COLRAM[off] = p_color[i];
           } else {
-            /* Overwrite (refresh char) */
-            VIDRAM[off] = ch;
-            /* color is same, skip */
+            /* Refresh char only if needed */
+            if (VIDRAM[off] != ch) {
+              VIDRAM[off] = ch;
+            }
           }
-        } else if (old_sy < 24 && old_sx < 40) {
-          /* Moved off screen, erase old */
+        } else if (old_sy < 24 && old_sx < SCREEN_W) {
+          /* Moved off screen, erase */
           VIDRAM[row_offsets[old_sy] + old_sx] = ' ';
         }
       }
@@ -242,17 +271,21 @@ void update_simulation() {
 }
 
 void launch_firework() {
-  unsigned char i;
+  register unsigned char i;
   for (i = 0; i < MAX_FIREWORKS; ++i) {
-    if (!fireworks[i].active) {
-      fireworks[i].active = 1;
-      fireworks[i].x = (1280 + rand() % 7680);
-      fireworks[i].y = MAX_Y_SCALED - 256;
-      fireworks[i].target_y = (1280 + rand() % 2560);
-      fireworks[i].vx = 0;
-      fireworks[i].vy = ROCKET_VY;
-      fireworks[i].color = PALETTE[rand() & 7];
-      fireworks[i].exploded = 0;
+    if (!f_active[i]) {
+      f_active[i] = 1;
+      /* Launch X: LAUNCH_X_MIN + random */
+      f_x[i] = LAUNCH_X_MIN + (fast_rand16() % LAUNCH_X_RANGE);
+      f_y[i] = MAX_Y_SCALED - 256;
+
+      /* Target Y: */
+      f_target_y[i] = TARGET_Y_MIN + (fast_rand16() % TARGET_Y_RANGE);
+
+      f_vx[i] = 0;
+      f_vy[i] = ROCKET_VY;
+      f_color[i] = PALETTE[fast_rand() & 7];
+      f_exploded[i] = 0;
       sfx_launch();
       break;
     }
@@ -266,7 +299,7 @@ int main() {
   init_tables();
   init_sound();
 
-  memset(fireworks, 0, sizeof(fireworks));
+  memset(f_active, 0, sizeof(f_active));
   memset(p_active, 0, sizeof(p_active));
 
   gotoxy(0, 24);

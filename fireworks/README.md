@@ -36,28 +36,25 @@ x64sc fireworks.prg
 
 To achieve a smooth framerate on the 1MHz 6502 processor, several critical optimizations were implemented compared to the original Python code:
 
-1.  **Zero-Overhead Coordinate System (Scale 256)**:
+1.  **Structure of Arrays (SoA)**:
+    - BOTH the **Particle** system and the **Firework (Rocket)** system utilize "Structure of Arrays" (e.g. `p_x[]`, `f_x[]`) instead of Array of Structures.
+    - On the 6502, calculating `struct_base + index * sizeof(struct)` is extremely expensive (multiplication). 
+    - Separate arrays allow indexed addressing (`LDA base,X`), which is 10-20x faster for member access.
+
+2.  **Zero-Overhead Coordinate System (Scale 256)**:
     - The simulation physics were re-mapped so that 256 internal units = 1 screen character.
-    - This allows coordinate mapping (`screen_x = world_x >> 8`) to be compiled as a single "take high byte" instruction, completely eliminating 6502-expensive division/modulo operations from the inner loop.
-    - This provided a 10x speedup in coordinate calculation, allowing for many more simultaneous particles.
+    - This allows coordinate mapping (`screen_x = world_x >> 8`) to be compiled as a single "take high byte" instruction, completely eliminating division logic.
 
-2.  **Inlined Plotting**:
-    - The plotting logic was manually inlined into the main loop to avoid function call overhead (`JSR`/`RTS`).
+3.  **Fast Xorshift Random Number Generator**:
+    - The standard `rand()` function was replaced with a custom 8-bit Xorshift implementation (`fast_rand`).
+    - This drastically eliminates the overhead of generating random numbers for particle velocities during explosions.
 
-3.  **Delta Drawing**:
-    - The screen is never cleared completely. Instead, particles only "erase" their old position if they have moved to a new character cell. This reduces memory writes significantly.
+4.  **Delta Drawing & Conditional Writes**:
+    - The screen is never cleared completely. Instead, particles only "erase" their old position if they have moved.
+    - **Optimization**: If a particle is at the same screen location as the previous frame, the Video RAM write is skipped entirely (unless the character shape assumedly changed), saving valuable cycles.
 
-4.  **Structure of Arrays (SoA)**:
-    - Converted the particle system from an "Array of Structures" to a "Structure of Arrays".
-    - On the 6502, accessing `int x[i]` is significantly faster than `structs[i].x` because it avoids complex pointer arithmetic (6502 does not have a hardware multiplier). This speeds up particle loops by 2-3x.
-
-5.  **Fixed-Point Algebra (16-bit)**:
-    - Floating-point math is irrelevant. Using `int` (16-bit) handles the physics range of 0..10240 perfectly.
-
-6.  **Direct Video Memory Access**:
-    - The standard `conio` library (`cputc`, `gotoxy`) carries significant overhead.
-    - This implementation writes directly to the Video RAM at `0x0400` and Color RAM at `0xD800`.
-    - A **pre-calculated row offset table** (`row_offsets`) allows for single-addition screen indexing.
+5.  **Direct Video Memory Access with Pre-calculated Offsets**:
+    - Writes directly to the Video RAM at `0x0400` and Color RAM at `0xD800` using pre-calculated row offsets, avoiding all multiplication in the draw loop.
 
 ## Sound Implementation
 - The **SID (Sound Interface Device)** chip is accessed directly at `0xD400`.
