@@ -11,10 +11,11 @@ typedef struct {
 } MD5_CTX;
 
 void MD5Init(MD5_CTX *);
-void MD5Update(MD5_CTX *, const uint8_t *, unsigned int);
+void MD5Update(MD5_CTX *, const uint8_t *, uint32_t);
 void MD5Final(uint8_t[16], MD5_CTX *);
-void MD5_Internal_Tests(void);
 
-extern int md5_debug;
+#ifdef MD5_DEBUG
+void MD5_Internal_Tests(void);
+#endif
 
 #endif /* MD5_H */

@@ -1,13 +1,12 @@
-/*
-  MD5 implementation for specific CC65 constraints.
-  Based on the RSA Data Security, Inc. MD5 Message-Digest Algorithm.
-*/
-
 #include "md5.h"
 #include <string.h>
 #include <stdio.h>
 
-int md5_debug = 0;
+#ifdef MD5_DEBUG
+#define MD5_LOG(...) printf(__VA_ARGS__)
+#else
+#define MD5_LOG(...)
+#endif
 
 /* Constants for MD5Transform routine. */
 #define S11 7
@@ -31,7 +30,7 @@ static void MD5Transform(uint32_t [4], const uint8_t [64]);
 static void Encode(uint8_t *, const uint32_t *, unsigned int);
 static void Decode(uint32_t *, const uint8_t *, unsigned int);
 
-static uint8_t PADDING[64] = {
+static const uint8_t PADDING[64] = {
   0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -94,16 +93,14 @@ void MD5Init(MD5_CTX *context)
 /* MD5 block update operation. Continues an MD5 message-digest
   operation, processing another message block, and updating the
   context. */
-void MD5Update(MD5_CTX *context, const uint8_t *input, unsigned int inputLen)
+void MD5Update(MD5_CTX *context, const uint8_t *input, uint32_t inputLen)
 {
-  unsigned int i, index, partLen;
+  uint32_t i, index, partLen;
 
   /* Compute number of bytes mod 64 */
-  index = (unsigned int)((context->count[0] >> 3) & 0x3F);
+  index = (uint32_t)((context->count[0] >> 3) & 0x3F);
 
-  if (md5_debug) {
-      printf("Update: len=%u, index=%u, cnt0=%08lx\n", inputLen, index, context->count[0]);
-  }
+  MD5_LOG("Update: len=%lu, index=%lu, cnt0=%08lx\n", (unsigned long)inputLen, (unsigned long)index, (unsigned long)context->count[0]);
 
   /* Update number of bits */
   {
@@ -117,7 +114,7 @@ void MD5Update(MD5_CTX *context, const uint8_t *input, unsigned int inputLen)
 
   /* Transform as many times as possible. */
   if (inputLen >= partLen) {
-    memcpy(&context->buffer[index], input, partLen);
+    memcpy(&context->buffer[index], input, (unsigned int)partLen);
     MD5Transform(context->state, context->buffer);
 
     for (i = partLen; i + 63 < inputLen; i += 64)
@@ -129,7 +126,7 @@ void MD5Update(MD5_CTX *context, const uint8_t *input, unsigned int inputLen)
     i = 0;
 
   /* Buffer remaining input */
-  memcpy(&context->buffer[index], &input[i], inputLen-i);
+  memcpy(&context->buffer[index], &input[i], (unsigned int)(inputLen-i));
 }
 
 /* MD5 finalization. Ends an MD5 message-digest operation, writing the
@@ -137,13 +134,13 @@ void MD5Update(MD5_CTX *context, const uint8_t *input, unsigned int inputLen)
 void MD5Final(uint8_t digest[16], MD5_CTX *context)
 {
   uint8_t bits[8];
-  unsigned int index, padLen;
+  uint32_t index, padLen;
 
   /* Save number of bits */
   Encode(bits, context->count, 8);
 
   /* Pad out to 56 mod 64. */
-  index = (unsigned int)((context->count[0] >> 3) & 0x3f);
+  index = (uint32_t)((context->count[0] >> 3) & 0x3f);
   padLen = (index < 56) ? (56 - index) : (120 - index);
   MD5Update(context, PADDING, padLen);
 
@@ -164,11 +161,9 @@ static void MD5Transform(uint32_t state[4], const uint8_t block[64])
 
   Decode(x, block, 64);
 
-  if (md5_debug) {
-      printf("# MD5Transform start:\n");
-      printf("  State: %08lx %08lx %08lx %08lx\n", state[0], state[1], state[2], state[3]);
-      printf("  Block[0-3]: %02x %02x %02x %02x\n", block[0], block[1], block[2], block[3]);
-  }
+  MD5_LOG("# MD5Transform start:\n");
+  MD5_LOG("  State: %08lx %08lx %08lx %08lx\n", (unsigned long)state[0], (unsigned long)state[1], (unsigned long)state[2], (unsigned long)state[3]);
+  MD5_LOG("  Block[0-3]: %02x %02x %02x %02x\n", block[0], block[1], block[2], block[3]);
 
   /* Round 1 */
   FF (a, b, c, d, x[ 0], S11, 0xd76aa478); /* 1 */
@@ -188,7 +183,7 @@ static void MD5Transform(uint32_t state[4], const uint8_t block[64])
   FF (c, d, a, b, x[14], S13, 0xa679438e); /* 15 */
   FF (b, c, d, a, x[15], S14, 0x49b40821); /* 16 */
 
-  if (md5_debug) printf("  R1: %08lx %08lx %08lx %08lx\n", a, b, c, d);
+  MD5_LOG("  R1: %08lx %08lx %08lx %08lx\n", (unsigned long)a, (unsigned long)b, (unsigned long)c, (unsigned long)d);
 
   /* Round 2 */
   GG (a, b, c, d, x[ 1], S21, 0xf61e2562); /* 17 */
@@ -208,7 +203,7 @@ static void MD5Transform(uint32_t state[4], const uint8_t block[64])
   GG (c, d, a, b, x[ 7], S23, 0x676f02d9); /* 31 */
   GG (b, c, d, a, x[12], S24, 0x8d2a4c8a); /* 32 */
   
-  if (md5_debug) printf("  R2: %08lx %08lx %08lx %08lx\n", a, b, c, d);
+  MD5_LOG("  R2: %08lx %08lx %08lx %08lx\n", (unsigned long)a, (unsigned long)b, (unsigned long)c, (unsigned long)d);
 
   /* Round 3 */
   HH (a, b, c, d, x[ 5], S31, 0xfffa3942); /* 33 */
@@ -228,7 +223,7 @@ static void MD5Transform(uint32_t state[4], const uint8_t block[64])
   HH (c, d, a, b, x[15], S33, 0x1fa27cf8); /* 47 */
   HH (b, c, d, a, x[ 2], S34, 0xc4ac5665); /* 48 */
 
-   if (md5_debug) printf("  R3: %08lx %08lx %08lx %08lx\n", a, b, c, d);
+   MD5_LOG("  R3: %08lx %08lx %08lx %08lx\n", (unsigned long)a, (unsigned long)b, (unsigned long)c, (unsigned long)d);
 
   /* Round 4 */
   II (a, b, c, d, x[ 0], S41, 0xf4292244); /* 49 */
@@ -248,7 +243,7 @@ static void MD5Transform(uint32_t state[4], const uint8_t block[64])
   II (c, d, a, b, x[ 2], S43, 0x2ad7d2bb); /* 63 */
   II (b, c, d, a, x[ 9], S44, 0xeb86d391); /* 64 */
 
-  if (md5_debug) printf("  R4: %08lx %08lx %08lx %08lx\n", a, b, c, d);
+  MD5_LOG("  R4: %08lx %08lx %08lx %08lx\n", (unsigned long)a, (unsigned long)b, (unsigned long)c, (unsigned long)d);
 
   state[0] += a;
   state[1] += b;
@@ -288,6 +283,7 @@ static void Decode(uint32_t *output, const uint8_t *input, unsigned int len)
   }
 }
 
+#ifdef MD5_DEBUG
 /* Debugging / Unit Test function */
 void MD5_Internal_Tests()
 {
@@ -301,28 +297,24 @@ void MD5_Internal_Tests()
     /* 0x12345678 rotated left 8 should be 0x34567812 */
     a = 0x12345678;
     b = ROTATE_LEFT(a, 8);
-    if (b != 0x34567812) printf("ROTATE_LEFT fail: %08lx -> %08lx (expected 34567812)\n", a, b);
+    if (b != 0x34567812) printf("ROTATE_LEFT fail: %08lx -> %08lx (expected 34567812)\n", (unsigned long)a, (unsigned long)b);
     else printf("ROTATE_LEFT(0x12345678, 8) pass\n");
 
     /* Test F: (x & y) | (~x & z) */
-    /* x=0xFF00FF00, y=0xAAAAAAAA, z=0x55555555 */
-    /* x&y = 0xAA00AA00 */
-    /* ~x = 0x00FF00FF. ~x&z = 0x00550055 */
-    /* Result = 0xAA55AA55 */
     a = 0xFF00FF00;
     b = 0xAAAAAAAA;
     c = 0x55555555;
     d = F(a, b, c);
-    if (d != 0xAA55AA55) printf("F fail: %08lx (expected AA55AA55)\n", d);
+    if (d != 0xAA55AA55) printf("F fail: %08lx (expected AA55AA55)\n", (unsigned long)d);
     else printf("F pass\n");
 
     /* Test Decode */
     buf[0] = 0x12; buf[1] = 0x34; buf[2] = 0x56; buf[3] = 0x78;
     Decode(&decoded, buf, 4);
-    if (decoded != 0x78563412) printf("Decode fail: %08lx (expected 78563412)\n", decoded);
+    if (decoded != 0x78563412) printf("Decode fail: %08lx (expected 78563412)\n", (unsigned long)decoded);
     else printf("Decode pass\n");
     
     /* Test Byte Order / Sanity */
-    if (sizeof(uint32_t) != 4) printf("sizeof(uint32_t) is NOT 4! It is %d\n", (int)sizeof(uint32_t));
-    else printf("sizeof(uint32_t) is correct\n");
+    printf("sizeof(uint32_t) is %d\n", (int)sizeof(uint32_t));
 }
+#endif

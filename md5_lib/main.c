@@ -11,7 +11,7 @@ void print_digest(unsigned char *digest) {
     }
 }
 
-void verify_md5_bytes(const unsigned char *bytes, unsigned int len, const char *label, char *expected) {
+void verify_md5_bytes(const unsigned char *bytes, uint32_t len, const char *label, const char *expected) {
     MD5_CTX context;
     unsigned char digest[16];
     char output[33];
@@ -42,20 +42,19 @@ void verify_md5_bytes(const unsigned char *bytes, unsigned int len, const char *
 int main() {
     unsigned char a_byte[] = { 0x61 }; // 'a' in ASCII
     unsigned char abc_bytes[] = { 0x61, 0x62, 0x63 }; // "abc" in ASCII
-
+    unsigned char msg_bytes[] = { 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x20, 
+                                  0x64, 0x69, 0x67, 0x65, 0x73, 0x74 }; // "message digest" in ASCII
     printf("MD5 Test Suite\n");
     printf("--------------\n");
 
+#ifdef MD5_DEBUG
     MD5_Internal_Tests();
+#endif
 
     verify_md5_bytes((unsigned char*)"", 0, "\"\"", "d41d8cd98f00b204e9800998ecf8427e");
     verify_md5_bytes(a_byte, 1, "\"a\"", "0cc175b9c0f1b6a831c399e269772661");
-    
-    printf("\n--- Debugging 'abc' ---\n");
-    md5_debug = 1;
     verify_md5_bytes(abc_bytes, 3, "\"abc\"", "900150983cd24fb0d6963f7d28e17f72");
-    md5_debug = 0;
-    printf("--- End Debugging ---\n\n");
+    verify_md5_bytes(msg_bytes, 14, "\"message digest\"", "f96b697d7cb7938d525a2f31aaf161d0");
 
     if (errors == 0) {
         printf("\nAll tests passed!\n");

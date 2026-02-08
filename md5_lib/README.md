@@ -34,15 +34,37 @@ We recommend building without high optimization (`-O`) if you encounter stabilit
 ## Build Instructions
 
 Requires `cc65` installed and in your path.
+=======
+- Handles inputs larger than 64KB (uses 32-bit length).
+- Memory-efficient: `const` padding saved in ROM/data.
+- Conditional debugging system via preprocessor macros.
+
+## The "Tricky Stuff" (C64/cc65 Specifics)
+
+### 1. 32-bit Arithmetic & Type Promotion
+`cc65` uses 16-bit `int` and `unsigned int`. The MD5 algorithm requires 32-bit precision for state, bit-counts, and buffer management. 
+- **Solution**: All internal state and length variables are defined as `uint32_t` (from `<stdint.h>`). We use explicit `& 0xFFFFFFFFUL` masking to ensure correct 32-bit truncation on the 8-bit CPU.
+
+### 2. Expression Complexity
+Deep expression trees can confuse the `cc65` code generator or exceed its register capacity.
+- **Solution**: Round transformations are broken down into simple, atomic C statements to ensure stable code generation.
+
+### 3. PETSCII vs. ASCII
+The C64 uses PETSCII locally. Standard MD5 vectors are ASCII-based.
+- **Solution**: Test cases in `main.c` use explicit ASCII hex byte arrays to guarantee correctness against the MD5 spec.
+
+### 4. Debugging & Code Size
+Logging with `printf` and internal consistency tests consume significant space on the 1MHz/64KB C64.
+- **Solution**: A macro-based logging system (`MD5_DEBUG`) allows zero-overhead production builds. 
+
+## Build Instructions
+
+Requires `cc65` installed.
 
 ```bash
 make clean
 make
 ```
-
-This will produce:
-- `md5.lib`: The static library to link into your project.
-- `test.prg`: A C64 executable that runs the test suite.
 
 ## Usage
 
